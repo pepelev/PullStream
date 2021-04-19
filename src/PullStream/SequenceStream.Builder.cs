@@ -18,6 +18,7 @@ namespace PullStream
             }
 
             public Builder<TItem, TContext> On<TItem>(IEnumerable<TItem> sequence) => new(this, sequence);
+            public AsyncBuilder<TItem, TContext> On<TItem>(IAsyncEnumerable<TItem> sequence) => new(this, sequence);
         }
 
         public sealed class Builder<TItem, TContext>
@@ -36,11 +37,55 @@ namespace PullStream
                 sequence.WithItemKind()
             );
 
+            public Builder<Item<TItem>, TContext> AsItems() => new(
+                builder,
+                sequence.AsItems()
+            );
+
+            public Builder<(int Index, TItem Item), TContext> Indexed() => new(
+                builder,
+                sequence.Indexed()
+            );
+
             public SequenceStream<TItem, TContext> Writing(Action<TContext, TItem> write) => new(
                 builder.factory,
                 builder.dispose,
                 write,
                 sequence.GetEnumerator()
+            );
+        }
+
+        public sealed class AsyncBuilder<TItem, TContext>
+        {
+            private readonly Builder<TContext> builder;
+            private readonly IAsyncEnumerable<TItem> sequence;
+
+            internal AsyncBuilder(Builder<TContext> builder, IAsyncEnumerable<TItem> sequence)
+            {
+                this.builder = builder;
+                this.sequence = sequence;
+            }
+
+            public AsyncBuilder<(ItemKind Kind, TItem Item), TContext> WithItemKind() => new(
+                builder,
+                sequence.WithItemKind()
+            );
+
+            public AsyncBuilder<Item<TItem>, TContext> AsItems() => new(
+                builder,
+                sequence.AsItems()
+            );
+
+            public AsyncBuilder<(int Index, TItem Item), TContext> Indexed() => new(
+                builder,
+                sequence.Indexed()
+            );
+
+            public AsyncSequenceStream<TItem, TContext> Writing(Action<TContext, TItem> write) => new(
+                builder.factory,
+                builder.dispose,
+                write,
+                sequence.GetAsyncEnumerator()
             );
         }
 

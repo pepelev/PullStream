@@ -2,23 +2,24 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace PullStream
 {
-    public sealed class SequenceStream<T, TContext> : Stream
+    public sealed class AsyncSequenceStream<T, TContext> : Stream
     {
         private readonly CircularBuffer buffer = new();
-        private readonly IEnumerator<T> enumerator;
+        private readonly IAsyncEnumerator<T> enumerator;
         private readonly Lazy<TContext> context;
         private readonly Action<TContext> dispose;
         private readonly Action<TContext, T> write;
         private State state = State.MoveNext;
 
-        public SequenceStream(
+        public AsyncSequenceStream(
             Func<Stream, TContext> contextFactory,
             Action<TContext> dispose,
             Action<TContext, T> write,
-            IEnumerator<T> enumerator)
+            IAsyncEnumerator<T> enumerator)
         {
             this.dispose = dispose;
             this.write = write;
@@ -71,18 +72,28 @@ namespace PullStream
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
+            CleanupAsync().AsTask().Wait();
+        }
+
+#if NETSTANDARD2_0
+        private
+#else
+        public override
+#endif
+        async ValueTask DisposeAsync()
+        {
             if (state == State.Completed || state == State.Disposed)
             {
                 return;
             }
 
-            Cleanup();
+            await CleanupAsync();
             state = State.Disposed;
         }
 
-        private void Cleanup()
+        private async ValueTask CleanupAsync()
         {
-            enumerator.Dispose();
+            await enumerator.DisposeAsync();
 
             if (context.IsValueCreated)
             {
@@ -95,14 +106,26 @@ namespace PullStream
             CheckDisposed();
         }
 
-        public override int Read(byte[] destination, int offset, int count)
+        public override Task<int> ReadAsync(byte[] destination, int offset, int count, CancellationToken cancellationToken)
+        {
+            var memory = new Memory<byte>(destination, offset, count);
+            return ReadAsync(memory, cancellationToken).AsTask();
+        }
+
+#if NETSTANDARD2_0
+        private
+#else
+        public override
+#endif
+        async ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken cancellationToken = new())
         {
             CheckDisposed();
-            while (state != State.Completed && buffer.BytesReady < count)
+            while (state != State.Completed && buffer.BytesReady < destination.Length)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (state == State.MoveNext)
                 {
-                    if (!enumerator.MoveNext())
+                    if (!await enumerator.MoveNextAsync())
                     {
                         state = State.Cleanup;
                         continue;
@@ -117,15 +140,20 @@ namespace PullStream
                 }
                 else if (state == State.Cleanup)
                 {
-                    Cleanup();
+                    await CleanupAsync();
                     state = State.Completed;
                 }
             }
 
-            var length = Math.Min(count, buffer.BytesReady);
-            buffer.Read(destination.AsSpan().Slice(offset, length));
+            var length = Math.Min(destination.Length, buffer.BytesReady);
+            buffer.Read(destination.Span);
             buffer.Cut(length);
             return length;
+        }
+
+        public override int Read(byte[] destination, int offset, int count)
+        {
+            return ReadAsync(destination, offset, count).Result;
         }
 
         private void CheckDisposed()

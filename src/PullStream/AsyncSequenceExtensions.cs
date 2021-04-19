@@ -3,9 +3,9 @@ using System.Linq;
 
 namespace PullStream
 {
-    public static class SequenceExtensions
+    public static class AsyncSequenceExtensions
     {
-        public static IEnumerable<Item<T>> AsItems<T>(this IEnumerable<T> sequence) =>
+        public static IAsyncEnumerable<Item<T>> AsItems<T>(this IAsyncEnumerable<T> sequence) =>
             sequence.WithItemKind().Indexed().Select(
                 triple =>
                 {
@@ -14,16 +14,16 @@ namespace PullStream
                 }
             );
 
-        public static IEnumerable<(ItemKind Kind, T Item)> WithItemKind<T>(this IEnumerable<T> sequence)
+        public static async IAsyncEnumerable<(ItemKind Kind, T Item)> WithItemKind<T>(this IAsyncEnumerable<T> sequence)
         {
-            using var enumerator = sequence.GetEnumerator();
-            if (!enumerator.MoveNext())
+            await using var enumerator = sequence.GetAsyncEnumerator();
+            if (!await enumerator.MoveNextAsync())
             {
                 yield break;
             }
 
             var current = enumerator.Current;
-            if (!enumerator.MoveNext())
+            if (!await enumerator.MoveNextAsync())
             {
                 yield return (ItemKind.Single, current);
                 yield break;
@@ -32,7 +32,7 @@ namespace PullStream
             yield return (ItemKind.First, current);
             current = enumerator.Current;
 
-            while (enumerator.MoveNext())
+            while (await enumerator.MoveNextAsync())
             {
                 yield return (ItemKind.Middle, current);
                 current = enumerator.Current;
@@ -41,7 +41,7 @@ namespace PullStream
             yield return (ItemKind.Last, current);
         }
 
-        public static IEnumerable<(int Index, T Item)> Indexed<T>(this IEnumerable<T> sequence) =>
+        public static IAsyncEnumerable<(int Index, T Item)> Indexed<T>(this IAsyncEnumerable<T> sequence) =>
             sequence.Select((item, index) => (index, item));
     }
 }

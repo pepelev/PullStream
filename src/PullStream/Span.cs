@@ -66,6 +66,18 @@ namespace PullStream
         public Span<T> Slice(int offset, int length) => new(content, start + offset, length);
     }
 
+    internal readonly struct Memory<T>
+    {
+        public Span<T> Span { get; }
+
+        public Memory(T[] content, int start, int count)
+        {
+            Span = new Span<T>(content, start, count);
+        }
+
+        public int Length => Span.Length;
+    }
+
     internal static class ArrayExtensions
     {
         public static Span<T> AsSpan<T>(this T[] array) => new(array);
