@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ClassLibrary1
+namespace PullStream
 {
     [Flags]
     public enum ItemKind

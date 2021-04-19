@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using ClassLibrary1;
 using NUnit.Framework;
 
-namespace LazyStream.Test
+namespace PullStream.Tests
 {
     public sealed class SequenceExtensionShould
     {
@@ -49,6 +48,6 @@ namespace LazyStream.Test
 
         [Test]
         [TestCaseSource(nameof(Cases))]
-        public IEnumerable<(ItemKind Kind, int Value)> Test(int[] sequence) => sequence.WithItemKind();
+        public IEnumerable<(ItemKind Kind, int Value)> Enrich_With_Kind(int[] sequence) => sequence.WithItemKind();
     }
 }

@@ -3,78 +3,24 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 
-namespace ClassLibrary1
+namespace PullStream
 {
-    public static class PullStream
-    {
-        public sealed class Builder<TContext>
-        {
-            internal readonly Func<Stream, TContext> factory;
-            internal readonly Action<TContext> dispose;
-
-            internal Builder(Func<Stream, TContext> factory, Action<TContext> dispose)
-            {
-                this.factory = factory;
-                this.dispose = dispose;
-            }
-
-            public Builder<TItem, TContext> On<TItem>(IEnumerable<TItem> sequence) => new(this, sequence);
-        }
-
-        public sealed class Builder<TItem, TContext>
-        {
-            private readonly Builder<TContext> builder;
-            private readonly IEnumerable<TItem> sequence;
-
-            internal Builder(Builder<TContext> builder, IEnumerable<TItem> sequence)
-            {
-                this.builder = builder;
-                this.sequence = sequence;
-            }
-
-            public Builder<(ItemKind Kind, TItem Item), TContext> WithItemKind() => new(
-                builder,
-                sequence.WithItemKind()
-            );
-
-            public PullStream<TItem, TContext> Writing(Action<TContext, TItem> write) => new(
-                builder.factory,
-                builder.dispose,
-                write,
-                sequence.GetEnumerator()
-            );
-        }
-
-
-        public static Builder<Stream> UsingStream() => Using(stream => stream);
-
-        public static Builder<T> Using<T>(Func<Stream, T> contextFactory) where T : IDisposable => Using(
-            contextFactory,
-            disposable => disposable.Dispose()
-        );
-
-        public static Builder<T> Using<T>(Func<Stream, T> contextFactory, Action<T> dispose) => new(
-            contextFactory,
-            dispose
-        );
-    }
-
-    public sealed class PullStream<T, TContext> : Stream
+    public sealed class SequenceStream<T, TContext> : Stream
     {
         private readonly CircularBuffer buffer = new();
         private readonly IEnumerator<T> enumerator;
         private readonly Lazy<TContext> context;
-        private readonly Action<TContext> cleanup;
+        private readonly Action<TContext> dispose;
         private readonly Action<TContext, T> write;
         private State state = State.MoveNext;
 
-        public PullStream(
+        public SequenceStream(
             Func<Stream, TContext> contextFactory,
-            Action<TContext> cleanup,
+            Action<TContext> dispose,
             Action<TContext, T> write,
             IEnumerator<T> enumerator)
         {
-            this.cleanup = cleanup;
+            this.dispose = dispose;
             this.write = write;
             this.enumerator = enumerator;
             context = new Lazy<TContext>(
@@ -83,34 +29,75 @@ namespace ClassLibrary1
             );
         }
 
-        public override bool CanRead => true;
-        public override bool CanSeek => false;
-        public override bool CanWrite => false;
+        public override bool CanRead
+        {
+            get
+            {
+                CheckDisposed();
+                return true;
+            }
+        }
+
+        public override bool CanSeek
+        {
+            get
+            {
+                CheckDisposed();
+                return false;
+            }
+        }
+
+        public override bool CanWrite
+        {
+            get
+            {
+                CheckDisposed();
+                return false;
+            }
+        }
+
         public override long Length => throw new NotSupportedException();
 
         public override long Position
         {
-            get => buffer.BytesCut;
+            get
+            {
+                CheckDisposed();
+                return buffer.BytesCut;
+            }
             set => throw new NotSupportedException();
         }
 
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
+            if (state == State.Completed || state == State.Disposed)
+            {
+                return;
+            }
+
+            Cleanup();
+            state = State.Disposed;
+        }
+
+        private void Cleanup()
+        {
             enumerator.Dispose();
 
             if (context.IsValueCreated)
             {
-                cleanup(context.Value);
+                dispose(context.Value);
             }
         }
 
         public override void Flush()
         {
+            CheckDisposed();
         }
 
         public override int Read(byte[] destination, int offset, int count)
         {
+            CheckDisposed();
             while (state != State.Completed && buffer.BytesReady < count)
             {
                 if (state == State.MoveNext)
@@ -130,7 +117,7 @@ namespace ClassLibrary1
                 }
                 else if (state == State.Cleanup)
                 {
-                    Dispose(true);
+                    Cleanup();
                     state = State.Completed;
                 }
             }
@@ -139,6 +126,14 @@ namespace ClassLibrary1
             buffer.Read(destination.AsSpan().Slice(offset, length));
             buffer.Cut(length);
             return length;
+        }
+
+        private void CheckDisposed()
+        {
+            if (state == State.Disposed)
+            {
+                throw new ObjectDisposedException(nameof(SequenceStream));
+            }
         }
 
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
@@ -150,7 +145,8 @@ namespace ClassLibrary1
             MoveNext,
             Current,
             Cleanup,
-            Completed
+            Completed,
+            Disposed
         }
     }
 }

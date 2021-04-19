@@ -1,4 +1,4 @@
-﻿namespace ClassLibrary1
+﻿namespace PullStream
 {
     public readonly struct Item<T>
     {

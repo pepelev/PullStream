@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace ClassLibrary1
+namespace PullStream
 {
     public static class SequenceExtensions
     {

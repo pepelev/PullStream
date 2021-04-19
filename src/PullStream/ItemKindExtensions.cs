@@ -1,4 +1,4 @@
-﻿namespace ClassLibrary1
+﻿namespace PullStream
 {
     public static class ItemKindExtensions
     {

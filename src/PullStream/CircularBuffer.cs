@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace ClassLibrary1
+namespace PullStream
 {
     internal sealed class CircularBuffer
     {
@@ -20,7 +20,7 @@ namespace ClassLibrary1
             BytesCut += length;
         }
 
-        public Stream WriteStream => new TransactionStream(this);
+        public System.IO.Stream WriteStream => new Stream(this);
 
         private readonly struct Content
         {
@@ -37,7 +37,7 @@ namespace ClassLibrary1
                 Count = count;
             }
 
-            public Content Append(ReadOnlySpan<byte> bytes)
+            public Content Append(Span<byte> bytes)
             {
                 if (buffer.Length < Count + bytes.Length)
                 {
@@ -66,7 +66,7 @@ namespace ClassLibrary1
                 else
                 {
                     bytes[..tail.Length].CopyTo(tail);
-                    bytes[tail.Length..].CopyTo(buffer);
+                    bytes[tail.Length..].CopyTo(new Span<byte>(buffer));
                 }
 
                 return new Content(buffer, offset, Count + bytes.Length);
@@ -79,7 +79,7 @@ namespace ClassLibrary1
                     throw new ArgumentOutOfRangeException();
                 }
 
-                var span = new ReadOnlySpan<byte>(buffer);
+                var span = new Span<byte>(buffer);
                 if (destination.Length <= span.Length - offset)
                 {
                     var source = span.Slice(offset, destination.Length);
@@ -112,11 +112,11 @@ namespace ClassLibrary1
             }
         }
 
-        public sealed class TransactionStream : Stream
+        private sealed class Stream : System.IO.Stream
         {
             private readonly CircularBuffer buffer;
 
-            public TransactionStream(CircularBuffer buffer)
+            public Stream(CircularBuffer buffer)
             {
                 this.buffer = buffer;
             }
@@ -136,24 +136,13 @@ namespace ClassLibrary1
             {
             }
 
-            public override int Read(byte[] destination, int offset, int count)
-            {
-                throw new NotSupportedException();
-            }
-
-            public override long Seek(long offset, SeekOrigin origin)
-            {
-                throw new NotSupportedException();
-            }
-
-            public override void SetLength(long value)
-            {
-                throw new NotSupportedException();
-            }
+            public override int Read(byte[] destination, int offset, int count) => throw new NotSupportedException();
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+            public override void SetLength(long value) => throw new NotSupportedException();
 
             public override void Write(byte[] source, int offset, int count)
             {
-                var bytes = new ReadOnlySpan<byte>(source, offset, count);
+                var bytes = new Span<byte>(source, offset, count);
                 buffer.content = buffer.content.Append(bytes);
             }
         }
