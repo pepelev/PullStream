@@ -6,7 +6,6 @@ namespace ClassLibrary1
     internal sealed class CircularBuffer
     {
         private Content content = Content.Empty;
-        private int version;
         public int BytesReady => content.Count;
         public long BytesCut { get; private set; }
 
@@ -18,15 +17,10 @@ namespace ClassLibrary1
         public void Cut(int length)
         {
             content = content.Cut(length);
-            version++;
             BytesCut += length;
         }
 
-        public TransactionStream BeginWrite()
-        {
-            version++;
-            return new TransactionStream(this);
-        }
+        public Stream WriteStream => new TransactionStream(this);
 
         private readonly struct Content
         {
@@ -47,7 +41,7 @@ namespace ClassLibrary1
             {
                 if (buffer.Length < Count + bytes.Length)
                 {
-                    var newLength = Math.Max(1024 * 80, Math.Max(Count + bytes.Length, buffer.Length * 2));
+                    var newLength = Math.Max(Count + bytes.Length, buffer.Length * 2);
                     var newBuffer = new byte[newLength];
                     Read(newBuffer.AsSpan()[..Count]);
                     bytes.CopyTo(newBuffer.AsSpan()[Count..]);
@@ -121,14 +115,10 @@ namespace ClassLibrary1
         public sealed class TransactionStream : Stream
         {
             private readonly CircularBuffer buffer;
-            private readonly long workingVersion;
-            private Content content;
 
             public TransactionStream(CircularBuffer buffer)
             {
                 this.buffer = buffer;
-                content = buffer.content;
-                workingVersion = buffer.version;
             }
 
             public override bool CanRead => false;
@@ -142,14 +132,9 @@ namespace ClassLibrary1
                 set => throw new NotSupportedException();
             }
 
-            public void Commit()
+            public override void Flush()
             {
-                CheckVersion();
-                buffer.content = content;
-                buffer.version++;
             }
-
-            public override void Flush() => CheckVersion();
 
             public override int Read(byte[] destination, int offset, int count)
             {
@@ -168,17 +153,8 @@ namespace ClassLibrary1
 
             public override void Write(byte[] source, int offset, int count)
             {
-                CheckVersion();
                 var bytes = new ReadOnlySpan<byte>(source, offset, count);
-                content = content.Append(bytes);
-            }
-
-            private void CheckVersion()
-            {
-                if (buffer.version != workingVersion)
-                {
-                    throw new InvalidOperationException();
-                }
+                buffer.content = buffer.content.Append(bytes);
             }
         }
     }

@@ -61,7 +61,7 @@ namespace ClassLibrary1
 
     public sealed class PullStream<T, TContext> : Stream
     {
-        private readonly CircularBuffer2 buffer = new();
+        private readonly CircularBuffer buffer = new();
         private readonly IEnumerator<T> enumerator;
         private readonly Lazy<TContext> context;
         private readonly Action<TContext> cleanup;
