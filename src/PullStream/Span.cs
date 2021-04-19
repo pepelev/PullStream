@@ -65,6 +65,11 @@ namespace PullStream
 
         public Span<T> Slice(int offset, int length) => new(content, start + offset, length);
     }
+
+    internal static class ArrayExtensions
+    {
+        public static Span<T> AsSpan<T>(this T[] array) => new(array);
+    }
 }
 
 namespace System
