@@ -4,7 +4,7 @@ using System.IO;
 
 namespace PullStream
 {
-    internal sealed class CircularBuffer
+    internal sealed class CircularBuffer : IDisposable
     {
         private readonly ArrayPool<byte> pool;
         private Content content = Content.Empty;
@@ -119,6 +119,14 @@ namespace PullStream
                     Count - length
                 );
             }
+
+            public void Return(ArrayPool<byte> pool)
+            {
+                if (buffer.Length > 0)
+                {
+                    pool.Return(buffer);
+                }
+            }
         }
 
         private sealed class Stream : System.IO.Stream
@@ -154,6 +162,11 @@ namespace PullStream
                 var bytes = new Span<byte>(source, offset, count);
                 buffer.content = buffer.content.Append(bytes, buffer.pool);
             }
+        }
+
+        public void Dispose()
+        {
+            content.Return(pool);
         }
     }
 }

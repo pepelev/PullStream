@@ -102,6 +102,8 @@ namespace PullStream
             {
                 dispose(context.Value);
             }
+
+            buffer.Dispose();
         }
 
         public override void Flush()
