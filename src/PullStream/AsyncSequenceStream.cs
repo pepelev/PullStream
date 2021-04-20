@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -8,7 +9,7 @@ namespace PullStream
 {
     public sealed class AsyncSequenceStream<T, TContext> : Stream
     {
-        private readonly CircularBuffer buffer = new();
+        private readonly CircularBuffer buffer;
         private readonly IAsyncEnumerator<T> enumerator;
         private readonly Lazy<TContext> context;
         private readonly Action<TContext> dispose;
@@ -19,12 +20,14 @@ namespace PullStream
             Func<Stream, TContext> contextFactory,
             Action<TContext> dispose,
             Action<TContext, T> write,
+            ArrayPool<byte> pool,
             IAsyncEnumerator<T> enumerator)
         {
             this.dispose = dispose;
             this.write = write;
             this.enumerator = enumerator;
-            context = new Lazy<TContext>(
+            buffer = new(pool);
+            context = new(
                 () => contextFactory(buffer.WriteStream),
                 LazyThreadSafetyMode.None
             );

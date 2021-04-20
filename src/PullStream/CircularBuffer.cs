@@ -1,13 +1,23 @@
 ﻿using System;
+using System.Buffers;
 using System.IO;
 
 namespace PullStream
 {
     internal sealed class CircularBuffer
     {
+        private readonly ArrayPool<byte> pool;
         private Content content = Content.Empty;
+
+        public CircularBuffer(ArrayPool<byte> pool)
+        {
+            this.pool = pool;
+        }
+
         public int BytesReady => content.Count;
         public long BytesCut { get; private set; }
+
+        public System.IO.Stream WriteStream => new Stream(this);
 
         public void Read(Span<byte> destination)
         {
@@ -19,8 +29,6 @@ namespace PullStream
             content = content.Cut(length);
             BytesCut += length;
         }
-
-        public System.IO.Stream WriteStream => new Stream(this);
 
         private readonly struct Content
         {
@@ -37,14 +45,15 @@ namespace PullStream
                 Count = count;
             }
 
-            public Content Append(Span<byte> bytes)
+            public Content Append(Span<byte> bytes, ArrayPool<byte> pool)
             {
                 if (buffer.Length < Count + bytes.Length)
                 {
                     var newLength = Math.Max(Count + bytes.Length, buffer.Length * 2);
-                    var newBuffer = new byte[newLength];
+                    var newBuffer = pool.Rent(newLength);
                     Read(newBuffer.AsSpan()[..Count]);
                     bytes.CopyTo(newBuffer.AsSpan()[Count..]);
+                    pool.Return(buffer);
                     return new Content(
                         newBuffer,
                         0,
@@ -143,7 +152,7 @@ namespace PullStream
             public override void Write(byte[] source, int offset, int count)
             {
                 var bytes = new Span<byte>(source, offset, count);
-                buffer.content = buffer.content.Append(bytes);
+                buffer.content = buffer.content.Append(bytes, buffer.pool);
             }
         }
     }
