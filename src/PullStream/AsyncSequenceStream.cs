@@ -75,7 +75,7 @@ namespace PullStream
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
-            CleanupAsync().AsTask().Wait();
+            DisposeAsync().AsTask().Wait();
         }
 
 #if NETSTANDARD2_0
