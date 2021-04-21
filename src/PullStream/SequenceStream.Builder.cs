@@ -65,7 +65,7 @@ namespace PullStream
                 newPool
             );
 
-            public SequenceStream<TItem, TContext> Writing(Action<TContext, TItem> write) => new(
+            public Stream Writing(Action<TContext, TItem> write) => new SequenceStream<TItem, TContext>(
                 builder.factory,
                 builder.dispose,
                 write,
@@ -111,7 +111,7 @@ namespace PullStream
                 newPool
             );
 
-            public AsyncSequenceStream<TItem, TContext> Writing(Action<TContext, TItem> write) => new(
+            public Stream Writing(Action<TContext, TItem> write) => new AsyncSequenceStream<TItem, TContext>(
                 builder.factory,
                 builder.dispose,
                 write,
