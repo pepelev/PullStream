@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <OutputPath>..\..\bin\PullStream.Tests</OutputPath>
     <TargetFrameworks>net472;net5.0</TargetFrameworks>
     <LangVersion>9</LangVersion>
     <IsPackable>false</IsPackable>
