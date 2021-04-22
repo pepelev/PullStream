@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -30,7 +31,7 @@ namespace PullStream.Tests
                         }
                     }
                 );
-            using var reader = new StreamReader(stream);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
             var result = reader.ReadToEnd();
 
             result.Should().Be($"Dog{Environment.NewLine}Cat{Environment.NewLine}Sparrow");
@@ -99,7 +100,7 @@ namespace PullStream.Tests
                         output.WriteLine();
                     }
                 );
-            using var reader = new StreamReader(stream);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
             reader.ReadToEnd();
 
             sequence.Enumerator.Disposed.Should().BeTrue();
@@ -223,6 +224,86 @@ namespace PullStream.Tests
 
             stream.ReadByte();
             writeCalls.Should().Be(1);
+        }
+
+        private IEnumerable<string> Strings(int countHint)
+        {
+            var random = new Random();
+            var count = random.Next(countHint / 2, countHint * 3 / 2);
+            for (var i = 0; i < count; i++)
+            {
+                var length = random.Next(1, 150);
+                var line = new StringBuilder(length);
+                for (var j = 0; j < length; j++)
+                {
+                    line.Append(
+                        (char) (random.Next('z' - 'a') + 'a')
+                    );
+                }
+
+                yield return line.ToString();
+            }
+        }
+
+        [Test]
+        public void Use_Pool()
+        {
+            var pool = new RememberingPool(ArrayPool<byte>.Shared);
+            var stream = SequenceStream.Using(
+                    output => new StreamWriter(output, Encoding.UTF8)
+                )
+                .On(Strings(15_000))
+                .Pooling(pool)
+                .Writing(
+                    (output, animal) =>
+                    {
+                        output.WriteLine(animal);
+                    }
+                );
+            new StreamReader(stream).ReadToEnd();
+
+            pool.Operations.Should().BePositive();
+        }
+
+        [Test]
+        public void Return_All_Arrays_To_Pool_When_Read_To_End()
+        {
+            var pool = new RememberingPool(ArrayPool<byte>.Shared);
+            var stream = SequenceStream.Using(
+                    output => new StreamWriter(output, Encoding.UTF8)
+                )
+                .On(Strings(15_000))
+                .Pooling(pool)
+                .Writing(
+                    (output, animal) =>
+                    {
+                        output.WriteLine(animal);
+                    }
+                );
+            new StreamReader(stream, Encoding.UTF8).ReadToEnd();
+
+            pool.HasCurrentRentArrays.Should().BeFalse();
+        }
+
+        [Test]
+        public void Return_All_Arrays_To_Pool_When_Stream_Read_And_Disposed()
+        {
+            var pool = new RememberingPool(ArrayPool<byte>.Shared);
+            var stream = SequenceStream.Using(
+                    output => new StreamWriter(output, Encoding.UTF8)
+                )
+                .On(Strings(15_000))
+                .Pooling(pool)
+                .Writing(
+                    (output, animal) =>
+                    {
+                        output.WriteLine(animal);
+                    }
+                );
+            new StreamReader(stream, Encoding.UTF8).ReadLine();
+            stream.Dispose();
+
+            pool.HasCurrentRentArrays.Should().BeFalse();
         }
     }
 }
