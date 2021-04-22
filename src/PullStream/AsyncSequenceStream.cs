@@ -9,7 +9,7 @@ namespace PullStream
 {
     public sealed class AsyncSequenceStream<T, TContext> : Stream
     {
-        private readonly CircularBuffer buffer;
+        private readonly CircularBuffer content;
         private readonly IAsyncEnumerator<T> enumerator;
         private readonly Lazy<TContext> context;
         private readonly Action<TContext> dispose;
@@ -23,12 +23,22 @@ namespace PullStream
             ArrayPool<byte> pool,
             IAsyncEnumerator<T> enumerator)
         {
-            this.dispose = dispose;
-            this.write = write;
-            this.enumerator = enumerator;
-            buffer = new(pool);
+            if (contextFactory == null)
+            {
+                throw new ArgumentNullException(nameof(contextFactory));
+            }
+
+            if (pool == null)
+            {
+                throw new ArgumentNullException(nameof(pool));
+            }
+
+            this.dispose = dispose ?? throw new ArgumentNullException(nameof(dispose));
+            this.write = write ?? throw new ArgumentNullException(nameof(write));
+            this.enumerator = enumerator ?? throw new ArgumentNullException(nameof(enumerator));
+            content = new(pool);
             context = new(
-                () => contextFactory(buffer.WriteStream),
+                () => contextFactory(content.WriteStream),
                 LazyThreadSafetyMode.None
             );
         }
@@ -67,7 +77,7 @@ namespace PullStream
             get
             {
                 CheckDisposed();
-                return buffer.BytesCut;
+                return content.BytesCut;
             }
             set => throw new NotSupportedException();
         }
@@ -103,7 +113,7 @@ namespace PullStream
                 dispose(context.Value);
             }
 
-            buffer.Dispose();
+            content.Dispose();
         }
 
         public override void Flush()
@@ -111,10 +121,25 @@ namespace PullStream
             CheckDisposed();
         }
 
-        public override Task<int> ReadAsync(byte[] destination, int offset, int count, CancellationToken cancellationToken)
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            var memory = new Memory<byte>(destination, offset, count);
-            return ReadAsync(memory, cancellationToken).AsTask();
+            if (buffer == null)
+            {
+                throw new ArgumentNullException(nameof(buffer));
+            }
+
+            if (offset < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(offset), offset, "Must be non-negative");
+            }
+
+            if (offset + count > buffer.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), count, "offset + count must not exceed buffer array length");
+            }
+
+            var memory = new Memory<byte>(buffer, offset, count);
+            return await ReadAsync(memory, cancellationToken);
         }
 
 #if NETSTANDARD2_0
@@ -125,7 +150,7 @@ namespace PullStream
         async ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken cancellationToken = new())
         {
             CheckDisposed();
-            while (state != State.Completed && buffer.BytesReady < destination.Length)
+            while (state != State.Completed && content.BytesReady < destination.Length)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (state == State.MoveNext)
@@ -150,15 +175,15 @@ namespace PullStream
                 }
             }
 
-            var length = Math.Min(destination.Length, buffer.BytesReady);
-            buffer.Read(destination.Span.Slice(0, length));
-            buffer.Cut(length);
+            var length = Math.Min(destination.Length, content.BytesReady);
+            content.Read(destination.Span.Slice(0, length));
+            content.Cut(length);
             return length;
         }
 
-        public override int Read(byte[] destination, int offset, int count)
+        public override int Read(byte[] buffer, int offset, int count)
         {
-            return ReadAsync(destination, offset, count).Result;
+            return ReadAsync(buffer, offset, count).Result;
         }
 
         private void CheckDisposed()

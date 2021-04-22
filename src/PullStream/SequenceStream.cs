@@ -3,12 +3,13 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace PullStream
 {
     public sealed class SequenceStream<T, TContext> : Stream
     {
-        private readonly CircularBuffer buffer;
+        private readonly CircularBuffer content;
         private readonly IEnumerator<T> enumerator;
         private readonly Lazy<TContext> context;
         private readonly Action<TContext> dispose;
@@ -22,12 +23,22 @@ namespace PullStream
             ArrayPool<byte> pool,
             IEnumerator<T> enumerator)
         {
-            this.dispose = dispose;
-            this.write = write;
-            this.enumerator = enumerator;
-            buffer = new(pool);
+            if (contextFactory == null)
+            {
+                throw new ArgumentNullException(nameof(contextFactory));
+            }
+
+            if (pool == null)
+            {
+                throw new ArgumentNullException(nameof(pool));
+            }
+
+            this.dispose = dispose ?? throw new ArgumentNullException(nameof(dispose));
+            this.write = write ?? throw new ArgumentNullException(nameof(write));
+            this.enumerator = enumerator ?? throw new ArgumentNullException(nameof(enumerator));
+            content = new(pool);
             context = new(
-                () => contextFactory(buffer.WriteStream),
+                () => contextFactory(content.WriteStream),
                 LazyThreadSafetyMode.None
             );
         }
@@ -66,7 +77,7 @@ namespace PullStream
             get
             {
                 CheckDisposed();
-                return buffer.BytesCut;
+                return content.BytesCut;
             }
             set => throw new NotSupportedException();
         }
@@ -92,7 +103,7 @@ namespace PullStream
                 dispose(context.Value);
             }
 
-            buffer.Dispose();
+            content.Dispose();
         }
 
         public override void Flush()
@@ -100,10 +111,23 @@ namespace PullStream
             CheckDisposed();
         }
 
-        public override int Read(byte[] destination, int offset, int count)
+#if !NETSTANDARD2_0
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = new())
+        {
+            var read = Read(buffer.Span);
+            return new ValueTask<int>(read);
+        }
+#endif
+
+#if NETSTANDARD2_0
+        private
+#else
+        public override
+#endif
+        int Read(Span<byte> buffer)
         {
             CheckDisposed();
-            while (state != State.Completed && buffer.BytesReady < count)
+            while (state != State.Completed && content.BytesReady < buffer.Length)
             {
                 if (state == State.MoveNext)
                 {
@@ -127,10 +151,30 @@ namespace PullStream
                 }
             }
 
-            var length = Math.Min(count, buffer.BytesReady);
-            buffer.Read(destination.AsSpan().Slice(offset, length));
-            buffer.Cut(length);
+            var length = Math.Min(buffer.Length, content.BytesReady);
+            content.Read(buffer.Slice(0, length));
+            content.Cut(length);
             return length;
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            if (buffer == null)
+            {
+                throw new ArgumentNullException(nameof(buffer));
+            }
+
+            if (offset < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(offset), offset, "Must be non-negative");
+            }
+
+            if (offset + count > buffer.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), count, "offset + count must not exceed buffer array length");
+            }
+
+            return Read(new Span<byte>(buffer, offset, count));
         }
 
         private void CheckDisposed()

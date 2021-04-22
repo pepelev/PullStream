@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 namespace PullStream
 {
@@ -18,14 +19,25 @@ namespace PullStream
                 this.dispose = dispose;
             }
 
-            public Builder<TItem, TContext> On<TItem>(IEnumerable<TItem> sequence) =>
-                new(this, sequence, ArrayPool<byte>.Shared);
+            public Builder<TItem, TContext> On<TItem>(IEnumerable<TItem> sequence)
+            {
+                if (sequence == null)
+                {
+                    throw new ArgumentNullException(nameof(sequence));
+                }
 
-            public AsyncBuilder<TItem, TContext> On<TItem>(IAsyncEnumerable<TItem> sequence) => new(
-                this,
-                sequence,
-                ArrayPool<byte>.Shared
-            );
+                return new(this, sequence, ArrayPool<byte>.Shared);
+            }
+
+            public AsyncBuilder<TItem, TContext> On<TItem>(IAsyncEnumerable<TItem> sequence)
+            {
+                if (sequence == null)
+                {
+                    throw new ArgumentNullException(nameof(sequence));
+                }
+
+                return new(this, sequence, ArrayPool<byte>.Shared);
+            }
         }
 
         public sealed class Builder<TItem, TContext>
@@ -59,19 +71,31 @@ namespace PullStream
                 pool
             );
 
-            public Builder<TItem, TContext> Pooling(ArrayPool<byte> newPool) => new(
-                builder,
-                sequence,
-                newPool
-            );
+            public Builder<TItem, TContext> Pooling(ArrayPool<byte> newPool)
+            {
+                if (newPool == null)
+                {
+                    throw new ArgumentNullException(nameof(newPool));
+                }
 
-            public Stream Writing(Action<TContext, TItem> write) => new SequenceStream<TItem, TContext>(
-                builder.factory,
-                builder.dispose,
-                write,
-                pool,
-                sequence.GetEnumerator()
-            );
+                return new(builder, sequence, newPool);
+            }
+
+            public Stream Writing(Action<TContext, TItem> write)
+            {
+                if (write == null)
+                {
+                    throw new ArgumentNullException(nameof(write));
+                }
+
+                return new SequenceStream<TItem, TContext>(
+                    builder.factory,
+                    builder.dispose,
+                    write,
+                    pool,
+                    sequence.GetEnumerator()
+                );
+            }
         }
 
         public sealed class AsyncBuilder<TItem, TContext>
@@ -105,11 +129,15 @@ namespace PullStream
                 pool
             );
 
-            public AsyncBuilder<TItem, TContext> Pooling(ArrayPool<byte> newPool) => new(
-                builder,
-                sequence,
-                newPool
-            );
+            public AsyncBuilder<TItem, TContext> Pooling(ArrayPool<byte> newPool)
+            {
+                if (newPool == null)
+                {
+                    throw new ArgumentNullException(nameof(newPool));
+                }
+
+                return new(builder, sequence, newPool);
+            }
 
             public Stream Writing(Action<TContext, TItem> write) => new AsyncSequenceStream<TItem, TContext>(
                 builder.factory,
@@ -122,14 +150,95 @@ namespace PullStream
 
         public static Builder<Stream> UsingStream() => Using(stream => stream);
 
-        public static Builder<T> Using<T>(Func<Stream, T> contextFactory) where T : IDisposable => Using(
-            contextFactory,
-            disposable => disposable.Dispose()
-        );
+        public static Builder<T> Using<T>(Func<Stream, T> contextFactory) where T : IDisposable
+        {
+            if (contextFactory == null)
+            {
+                throw new ArgumentNullException(nameof(contextFactory));
+            }
 
-        public static Builder<T> Using<T>(Func<Stream, T> contextFactory, Action<T> dispose) => new(
-            contextFactory,
-            dispose
-        );
+            return Using(contextFactory, disposable => disposable.Dispose());
+        }
+
+        public static Builder<T> Using<T>(Func<Stream, T> contextFactory, Action<T> dispose)
+        {
+            if (contextFactory == null)
+            {
+                throw new ArgumentNullException(nameof(contextFactory));
+            }
+
+            if (dispose == null)
+            {
+                throw new ArgumentNullException(nameof(dispose));
+            }
+
+            return new(contextFactory, dispose);
+        }
+
+        public static Stream FromStrings(IEnumerable<string> sequence, Encoding encoding, string separator)
+        {
+            if (sequence == null)
+            {
+                throw new ArgumentNullException(nameof(sequence));
+            }
+
+            if (encoding == null)
+            {
+                throw new ArgumentNullException(nameof(encoding));
+            }
+
+            if (separator == null)
+            {
+                throw new ArgumentNullException(nameof(separator));
+            }
+
+            return Using(stream => new StreamWriter(stream, encoding))
+                .On(sequence)
+                .WithItemKind()
+                .Writing(
+                    (writer, item) =>
+                    {
+                        var (kind, value) = item;
+                        writer.Write(value);
+                        if (!kind.IsLast())
+                        {
+                            writer.Write(separator);
+                        }
+                    }
+                );
+        }
+
+        public static Stream FromStrings(IAsyncEnumerable<string> sequence, Encoding encoding, string separator)
+        {
+            if (sequence == null)
+            {
+                throw new ArgumentNullException(nameof(sequence));
+            }
+
+            if (encoding == null)
+            {
+                throw new ArgumentNullException(nameof(encoding));
+            }
+
+            if (separator == null)
+            {
+                throw new ArgumentNullException(nameof(separator));
+            }
+
+            return Using(stream => new StreamWriter(stream, encoding))
+                .On(sequence)
+                .WithItemKind()
+                .Writing(
+                    (writer, item) =>
+                    {
+                        var (kind, value) = item;
+                        writer.Write(value);
+                        if (!kind.IsLast())
+                        {
+                            writer.Write(separator);
+                        }
+                    }
+                );
+        }
     }
 }
