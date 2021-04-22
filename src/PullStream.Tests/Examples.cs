@@ -34,7 +34,7 @@ namespace PullStream.Tests
         {
             var enrichedNames = names.AsItems();
 
-            foreach ((int index, ItemKind kind, string name) in enrichedNames)
+            foreach (var (index, kind, name) in enrichedNames)
             {
                 if (kind.IsFirst())
                 {
