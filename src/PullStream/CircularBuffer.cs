@@ -150,7 +150,7 @@ namespace PullStream
 
             public override long Position
             {
-                get => Length;
+                get => buffer.BytesCut + buffer.BytesReady;
                 set => throw new NotSupportedException();
             }
 
