@@ -51,8 +51,8 @@ namespace PullStream
                 {
                     var newLength = Math.Max(Count + bytes.Length, buffer.Length * 2);
                     var newBuffer = pool.Rent(newLength);
-                    Read(newBuffer.AsSpan()[..Count]);
-                    bytes.CopyTo(newBuffer.AsSpan()[Count..]);
+                    Read(newBuffer.AsSpan(0, Count));
+                    bytes.CopyTo(newBuffer.AsSpan(Count));
                     if (buffer.Length > 0)
                     {
                         pool.Return(buffer);
@@ -71,15 +71,15 @@ namespace PullStream
                 }
 
                 var cursor = (offset + Count) % buffer.Length;
-                var tail = buffer.AsSpan()[cursor..];
+                var tail = buffer.AsSpan(cursor);
                 if (bytes.Length < tail.Length)
                 {
                     bytes.CopyTo(tail);
                 }
                 else
                 {
-                    bytes[..tail.Length].CopyTo(tail);
-                    bytes[tail.Length..].CopyTo(new Span<byte>(buffer));
+                    bytes.Slice(0, tail.Length).CopyTo(tail);
+                    bytes.Slice(tail.Length).CopyTo(new Span<byte>(buffer));
                 }
 
                 return new Content(buffer, offset, Count + bytes.Length);
@@ -100,9 +100,10 @@ namespace PullStream
                     return;
                 }
 
-                span[offset..].CopyTo(destination);
-                var copied = span.Length - offset;
-                span[..(destination.Length - copied)].CopyTo(destination[copied..]);
+                var tail = span.Slice(offset);
+                tail.CopyTo(destination);
+                var head = span.Slice(0, destination.Length - tail.Length);
+                head.CopyTo(destination.Slice(tail.Length));
             }
 
             public Content Cut(int length)
