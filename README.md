@@ -153,7 +153,9 @@ var namesStream = SequenceStream.Using(
 
 ## AsyncEnumerable
 
-All features available for both `IEnumerable<T>` and `IAsyncEnumerable<T>`. Resulting stream may be consumed synchronously (using `int Stream.Read(byte[] buffer, int offset, int count)` or `int Stream.Read(Span<byte>)`) and asynchronously (using `Task<int> Stream.ReadAsync(byte[] buffer, int offset, int count)` or `ValueTask<int> Stream.ReadAsync(Memory<T>, CancellationToken)`). But it's recommended to consume stream created with `IAsyncEnumerable<T>` asynchronously, because otherwise async-to-sync conversion (`ReadAsync(...).Result`) will occur.
+All features available for both `IEnumerable<T>` and `IAsyncEnumerable<T>`.
+
+Resulting stream may be consumed synchronously (using `int Stream.Read(byte[] buffer, int offset, int count)` or `int Stream.Read(Span<byte>)`) or asynchronously (using `Task<int> Stream.ReadAsync(byte[] buffer, int offset, int count)` or `ValueTask<int> Stream.ReadAsync(Memory<T>, CancellationToken)`). But it's recommended to consume stream created with `IAsyncEnumerable<T>` asynchronously, because otherwise async-to-sync conversion (`ReadAsync(...).Result`) will occur.
 
 ## Recycling and guidance
 
