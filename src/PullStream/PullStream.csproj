@@ -27,6 +27,12 @@
     <PackageReference Include="System.Memory" Version="4.5.4" />
   </ItemGroup>
 
+  <ItemGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>PullStream.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="System.Linq.Async" Version="5.0.0" />
   </ItemGroup>
