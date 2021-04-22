@@ -53,7 +53,11 @@ namespace PullStream
                     var newBuffer = pool.Rent(newLength);
                     Read(newBuffer.AsSpan()[..Count]);
                     bytes.CopyTo(newBuffer.AsSpan()[Count..]);
-                    pool.Return(buffer);
+                    if (buffer.Length > 0)
+                    {
+                        pool.Return(buffer);
+                    }
+
                     return new Content(
                         newBuffer,
                         0,
