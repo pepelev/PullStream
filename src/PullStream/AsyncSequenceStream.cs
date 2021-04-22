@@ -151,7 +151,7 @@ namespace PullStream
             }
 
             var length = Math.Min(destination.Length, buffer.BytesReady);
-            buffer.Read(destination.Span);
+            buffer.Read(destination.Span.Slice(0, length));
             buffer.Cut(length);
             return length;
         }

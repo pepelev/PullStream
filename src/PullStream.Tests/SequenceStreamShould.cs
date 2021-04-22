@@ -1,105 +1,96 @@
 using System;
 using System.Buffers;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using FluentAssertions;
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using NUnit.Framework;
 
 namespace PullStream.Tests
 {
-    public class SequenceStreamShould
+    [TestFixtureSource(typeof(StreamFixtures))]
+    public sealed class SequenceStreamShould
     {
-        [Test]
-        public void Contain_Items()
+        private readonly IStreamFixture fixture;
+
+        public SequenceStreamShould(IStreamFixture fixture)
         {
-            using var stream = SequenceStream.Using(
-                    output => new StreamWriter(output, Encoding.UTF8)
-                )
-                .On(new[] {"Dog", "Cat", "Sparrow"})
-                .WithItemKind()
-                .Writing(
-                    (output, value) =>
+            this.fixture = fixture;
+        }
+
+        [Test]
+        public void Pass_Items_In_Sequence_Order()
+        {
+            var write = Substitute.For<Action<StreamWriter, string>>();
+
+            using var stream = fixture.Create(
+                output => new StreamWriter(output, Encoding.UTF8),
+                new[] { "Dog", "Cat", "Sparrow" },
+                write
+            );
+
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+            reader.ReadToEnd();
+
+            Received.InOrder(
+                () =>
+                {
+                    write(Arg.Any<StreamWriter>(), "Dog");
+                    write(Arg.Any<StreamWriter>(), "Cat");
+                    write(Arg.Any<StreamWriter>(), "Sparrow");
+                }
+            );
+        }
+
+        [Test]
+        public void Be_Empty_When_No_Item_Outputs_Itself()
+        {
+            using var stream = fixture.Create(
+                output => new StreamWriter(output, new UTF8Encoding(false)),
+                new[] { "Dog", "Cat", "Sparrow" },
+                (_, _) => { }
+            );
+            stream.ReadByte().Should().Be(-1);
+        }
+
+        [Test]
+        public void Write_Items()
+        {
+            using var stream = fixture.Create(
+                output => new StreamWriter(output, Encoding.UTF8),
+                new[] {"Dog", "Cat", "Sparrow"}.WithItemKind(),
+                (output, value) =>
+                {
+                    var (kind, animal) = value;
+                    output.Write(animal);
+                    if (!kind.IsLast())
                     {
-                        var (kind, animal) = value;
-                        output.Write(animal);
-                        if (!kind.IsLast())
-                        {
-                            output.WriteLine();
-                        }
+                        output.WriteLine();
                     }
-                );
+                }
+            );
             using var reader = new StreamReader(stream, Encoding.UTF8);
             var result = reader.ReadToEnd();
 
             result.Should().Be($"Dog{Environment.NewLine}Cat{Environment.NewLine}Sparrow");
         }
 
-        private sealed class Enumerator<T> : IEnumerator<T>
-        {
-            public bool Disposed { get; private set; }
-            public IEnumerator<T> Inner { get; set; } = Array.Empty<T>().AsEnumerable().GetEnumerator();
-
-            public bool MoveNext()
-            {
-                return Inner.MoveNext();
-            }
-
-            public void Reset() => Inner.Reset();
-
-            public T Current => Inner.Current;
-            object IEnumerator.Current => Current;
-
-            public void Dispose()
-            {
-                try
-                {
-                    Inner.Dispose();
-                }
-                finally
-                {
-                    Disposed = true;
-                }
-            }
-        }
-
-        private sealed class DirtySequence<T> : IEnumerable<T>
-        {
-            private readonly IEnumerable<T> sequence;
-            public Enumerator<T> Enumerator { get; } = new();
-
-            public DirtySequence(IEnumerable<T> sequence)
-            {
-                this.sequence = sequence;
-            }
-
-            public IEnumerator<T> GetEnumerator()
-            {
-                var enumerator = sequence.GetEnumerator();
-                Enumerator.Inner = enumerator;
-                return Enumerator;
-            }
-
-            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-        }
-
         [Test]
         public void Dispose_Enumerator_When_Read_To_End()
         {
-            var sequence = new DirtySequence<string>(new[] { "Dog", "Cat", "Sparrow" });
-            using var stream = SequenceStream.Using(
-                    output => new StreamWriter(output, Encoding.UTF8)
-                )
-                .On(sequence)
-                .Writing(
-                    (output, animal) =>
-                    {
-                        output.Write(animal);
-                        output.WriteLine();
-                    }
-                );
+            var sequence = new TracingSequence<string>(new[] { "Dog", "Cat", "Sparrow" });
+            using var stream = fixture.Create(
+                output => new StreamWriter(output, Encoding.UTF8),
+                sequence,
+                (output, animal) =>
+                {
+                    output.Write(animal);
+                    output.WriteLine();
+                }
+            );
             using var reader = new StreamReader(stream, Encoding.UTF8);
             reader.ReadToEnd();
 
@@ -109,40 +100,36 @@ namespace PullStream.Tests
         [Test]
         public void Dispose_Enumerator_When_Stream_Disposed()
         {
-            var sequence = new DirtySequence<string>(new[] { "Dog", "Cat", "Sparrow" });
-            var stream = SequenceStream.Using(
-                    output => new StreamWriter(output, Encoding.UTF8)
-                )
-                .On(sequence)
-                .Writing(
-                    (output, animal) =>
-                    {
-                        output.Write(animal);
-                        output.WriteLine();
-                    }
-                );
+            var sequence = new TracingSequence<string>(new[] { "Dog", "Cat", "Sparrow" });
+            var stream = fixture.Create(
+                output => new StreamWriter(output, Encoding.UTF8),
+                sequence,
+                (output, animal) =>
+                {
+                    output.Write(animal);
+                    output.WriteLine();
+                }
+            );
 
             stream.Dispose();
 
-            sequence.Enumerator.Disposed.Should().BeTrue();
+            (!sequence.EnumeratorRequested || sequence.Enumerator.Disposed).Should().BeTrue();
         }
 
         [Test]
-        public void Dispose_Enumerator_When_Stream_Read_Disposed()
+        public void Dispose_Enumerator_When_Stream_Read_And_Disposed()
         {
-            var sequence = new DirtySequence<string>(new[] { "Dog", "Cat", "Sparrow" });
-            var stream = SequenceStream.Using(
-                    output => new StreamWriter(output, Encoding.UTF8)
-                )
-                .On(sequence)
-                .Writing(
-                    (output, animal) =>
-                    {
-                        output.Write(animal);
-                        output.WriteLine();
-                        output.Flush();
-                    }
-                );
+            var sequence = new TracingSequence<string>(new[] { "Dog", "Cat", "Sparrow" });
+            var stream = fixture.Create(
+                output => new StreamWriter(output, Encoding.UTF8),
+                sequence,
+                (output, animal) =>
+                {
+                    output.Write(animal);
+                    output.WriteLine();
+                    output.Flush();
+                }
+            );
 
             stream.ReadByte();
             stream.Dispose();
@@ -153,80 +140,165 @@ namespace PullStream.Tests
         [Test]
         public void Not_Create_Context_When_Stream_Not_Read_And_Disposed()
         {
-            var contextCreated = false;
-            var stream = SequenceStream.Using(
-                    output =>
-                    {
-                        var context = new StreamWriter(output, Encoding.UTF8);
-                        contextCreated = true;
-                        return context;
-                    }
-                )
-                .On(new[] {"Dog", "Cat", "Sparrow"})
-                .Writing(
-                    (output, animal) =>
-                    {
-                        output.Write(animal);
-                        output.WriteLine();
-                    }
-                );
+            var factory = Substitute.For<Func<Stream, StreamWriter>>();
+            factory.Invoke(Arg.Any<Stream>()).Throws(new Exception("Should not be called"));
+
+            var stream = fixture.Create(
+                factory,
+                new[] { "Dog", "Cat", "Sparrow" },
+                (output, animal) =>
+                {
+                    output.Write(animal);
+                    output.WriteLine();
+                }
+            );
 
             stream.Dispose();
 
-            contextCreated.Should().BeFalse();
+            factory.DidNotReceive().Invoke(Arg.Any<Stream>());
         }
 
         [Test]
         public void Dispose_Context_When_Stream_Read_Disposed()
         {
-            var disposed = false;
-            var stream = SequenceStream.Using(
-                    output => new StreamWriter(output, Encoding.UTF8),
-                    output =>
-                    {
-                        output.Dispose();
-                        disposed = true;
-                    }
-                )
-                .On(new[] { "Dog", "Cat", "Sparrow" })
-                .Writing(
-                    (output, animal) =>
-                    {
-                        output.Write(animal);
-                        output.WriteLine();
-                        output.Flush();
-                    }
-                );
+            var dispose = Substitute.For<Action<StreamWriter>>();
+            var stream = fixture.Create(
+                output => new StreamWriter(output, Encoding.UTF8),
+                dispose,
+                new[] { "Dog", "Cat", "Sparrow" },
+                ArrayPool<byte>.Shared,
+                (output, animal) =>
+                {
+                    output.Write(animal);
+                    output.WriteLine();
+                    output.Flush();
+                }
+            );
 
             stream.ReadByte();
             stream.Dispose();
 
-            disposed.Should().BeTrue();
+            dispose.Received(1).Invoke(Arg.Any<StreamWriter>());
         }
 
         [Test]
         public void Not_Write_All_Items_On_Read()
         {
             var writeCalls = 0;
-            var stream = SequenceStream.Using(
-                    output => new StreamWriter(output, Encoding.UTF8)
-                )
-                .On(new[] { "Dog", "Cat", "Sparrow" })
-                .Writing(
-                    (output, animal) =>
-                    {
-                        output.Write(animal);
-                        output.WriteLine();
-                        output.Flush();
-                        writeCalls++;
-                    }
-                );
+
+            var stream = fixture.Create(
+                output => new StreamWriter(output, Encoding.UTF8),
+                new[] {"Dog", "Cat", "Sparrow"},
+                (output, animal) =>
+                {
+                    output.Write(animal);
+                    output.WriteLine();
+                    output.Flush();
+                    writeCalls++;
+                }
+            );
 
             stream.ReadByte();
             writeCalls.Should().Be(1);
         }
 
-        private IEnumerable<string> Strings(int countHint)
+        [Test]
+        public void Use_Pool()
+        {
+            var pool = new RememberingPool(ArrayPool<byte>.Shared);
+            using var stream = fixture.Create(
+                output => new StreamWriter(output, Encoding.UTF8),
+                Strings(15_000),
+                pool,
+                (output, animal) =>
+                {
+                    output.WriteLine(animal);
+                }
+            );
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+            reader.ReadToEnd();
+
+            pool.Operations.Should().BePositive();
+        }
+
+        [Test]
+        public void Return_All_Arrays_To_Pool_When_Read_To_End()
+        {
+            var pool = new RememberingPool(ArrayPool<byte>.Shared);
+            using var stream = fixture.Create(
+                output => new StreamWriter(output, Encoding.UTF8),
+                Strings(15_000),
+                pool,
+                (output, animal) =>
+                {
+                    output.WriteLine(animal);
+                }
+            );
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+            reader.ReadToEnd();
+
+            pool.HasCurrentRentArrays.Should().BeFalse();
+        }
+
+        [Test]
+        public void Return_All_Arrays_To_Pool_When_Stream_Read_And_Disposed()
+        {
+            var pool = new RememberingPool(ArrayPool<byte>.Shared);
+            using var stream = fixture.Create(
+                output => new StreamWriter(output, Encoding.UTF8),
+                Strings(15_000),
+                pool,
+                (output, animal) =>
+                {
+                    output.WriteLine(animal);
+                }
+            );
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+            reader.ReadLine();
+
+            stream.Dispose();
+
+            pool.HasCurrentRentArrays.Should().BeFalse();
+        }
+
+        [Test]
+        public void Contain_Items_In_Long_Run()
+        {
+            var items = Strings(15_000).AsItems().ToList();
+            using var stream = fixture.Create(
+                output => new StreamWriter(output, Encoding.UTF8),
+                items,
+                (output, item) =>
+                {
+                    var (_, kind, value) = item;
+                    if (kind.IsLast())
+                    {
+                        output.Write(value);
+                    }
+                    else
+                    {
+                        output.WriteLine(value);
+                    }
+                }
+            );
+            var expectation = string.Join(Environment.NewLine, items.Select(item => item.Value));
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+            var actualChars = new char[expectation.Length];
+            var offset = 0;
+
+            while (offset < actualChars.Length)
+            {
+                var random = new Random(Guid.NewGuid().GetHashCode());
+                var length = Math.Min(actualChars.Length - offset, random.Next(1, 250));
+                reader.Read(actualChars, offset, length);
+                offset += length;
+            }
+
+            var actual = new string(actualChars);
+            actual.Should().Be(expectation);
+        }
+
+        private static IEnumerable<string> Strings(int countHint)
         {
             var random = new Random();
             var count = random.Next(countHint / 2, countHint * 3 / 2);
@@ -237,73 +309,12 @@ namespace PullStream.Tests
                 for (var j = 0; j < length; j++)
                 {
                     line.Append(
-                        (char) (random.Next('z' - 'a') + 'a')
+                        (char) (random.Next('z' - 'a' + 1) + 'a')
                     );
                 }
 
                 yield return line.ToString();
             }
-        }
-
-        [Test]
-        public void Use_Pool()
-        {
-            var pool = new RememberingPool(ArrayPool<byte>.Shared);
-            var stream = SequenceStream.Using(
-                    output => new StreamWriter(output, Encoding.UTF8)
-                )
-                .On(Strings(15_000))
-                .Pooling(pool)
-                .Writing(
-                    (output, animal) =>
-                    {
-                        output.WriteLine(animal);
-                    }
-                );
-            new StreamReader(stream).ReadToEnd();
-
-            pool.Operations.Should().BePositive();
-        }
-
-        [Test]
-        public void Return_All_Arrays_To_Pool_When_Read_To_End()
-        {
-            var pool = new RememberingPool(ArrayPool<byte>.Shared);
-            var stream = SequenceStream.Using(
-                    output => new StreamWriter(output, Encoding.UTF8)
-                )
-                .On(Strings(15_000))
-                .Pooling(pool)
-                .Writing(
-                    (output, animal) =>
-                    {
-                        output.WriteLine(animal);
-                    }
-                );
-            new StreamReader(stream, Encoding.UTF8).ReadToEnd();
-
-            pool.HasCurrentRentArrays.Should().BeFalse();
-        }
-
-        [Test]
-        public void Return_All_Arrays_To_Pool_When_Stream_Read_And_Disposed()
-        {
-            var pool = new RememberingPool(ArrayPool<byte>.Shared);
-            var stream = SequenceStream.Using(
-                    output => new StreamWriter(output, Encoding.UTF8)
-                )
-                .On(Strings(15_000))
-                .Pooling(pool)
-                .Writing(
-                    (output, animal) =>
-                    {
-                        output.WriteLine(animal);
-                    }
-                );
-            new StreamReader(stream, Encoding.UTF8).ReadLine();
-            stream.Dispose();
-
-            pool.HasCurrentRentArrays.Should().BeFalse();
         }
     }
 }
