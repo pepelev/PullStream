@@ -3,7 +3,6 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace PullStream
 {
@@ -131,13 +130,10 @@ namespace PullStream
             {
                 if (state == State.MoveNext)
                 {
-                    if (!enumerator.MoveNext())
-                    {
-                        state = State.Cleanup;
-                        continue;
-                    }
-
-                    state = State.Current;
+                    var moved = enumerator.MoveNext();
+                    state = moved
+                        ? State.Current
+                        : State.Cleanup;
                 }
                 else if (state == State.Current)
                 {
@@ -148,6 +144,10 @@ namespace PullStream
                 {
                     Cleanup();
                     state = State.Completed;
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Stream is in wrong state: {state}");
                 }
             }
 

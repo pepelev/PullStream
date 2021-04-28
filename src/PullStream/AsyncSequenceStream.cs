@@ -147,7 +147,7 @@ namespace PullStream
 #else
         public override
 #endif
-        async ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken cancellationToken = new())
+        async ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken cancellationToken = default)
         {
             CheckDisposed();
             while (state != State.Completed && content.BytesReady < destination.Length)
@@ -155,13 +155,10 @@ namespace PullStream
                 cancellationToken.ThrowIfCancellationRequested();
                 if (state == State.MoveNext)
                 {
-                    if (!await enumerator.MoveNextAsync())
-                    {
-                        state = State.Cleanup;
-                        continue;
-                    }
-
-                    state = State.Current;
+                    var moved = await enumerator.MoveNextAsync();
+                    state = moved
+                        ? State.Current
+                        : State.Cleanup;
                 }
                 else if (state == State.Current)
                 {
@@ -172,6 +169,10 @@ namespace PullStream
                 {
                     await CleanupAsync();
                     state = State.Completed;
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Stream is in wrong state: {state}");
                 }
             }
 
