@@ -3,7 +3,6 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace PullStream
 {
@@ -112,10 +111,12 @@ namespace PullStream
         }
 
 #if !NETSTANDARD2_0
-        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = new())
+        public override System.Threading.Tasks.ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default)
         {
             var read = Read(buffer.Span);
-            return new ValueTask<int>(read);
+            return new System.Threading.Tasks.ValueTask<int>(read);
         }
 #endif
 
@@ -131,13 +132,10 @@ namespace PullStream
             {
                 if (state == State.MoveNext)
                 {
-                    if (!enumerator.MoveNext())
-                    {
-                        state = State.Cleanup;
-                        continue;
-                    }
-
-                    state = State.Current;
+                    var moved = enumerator.MoveNext();
+                    state = moved
+                        ? State.Current
+                        : State.Cleanup;
                 }
                 else if (state == State.Current)
                 {
@@ -148,6 +146,10 @@ namespace PullStream
                 {
                     Cleanup();
                     state = State.Completed;
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Stream is in wrong state: {state}");
                 }
             }
 
