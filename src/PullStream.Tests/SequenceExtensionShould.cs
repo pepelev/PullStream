@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 
@@ -134,6 +136,32 @@ namespace PullStream.Tests
         public async Task<IEnumerable<Item<string>>> Enrich_With_Item_On_Async_Enumerable(string[] sequence)
         {
             return await sequence.ToAsyncEnumerable().AsItems().ToListAsync();
+        }
+
+        [Test]
+        public void Support_Cancellation_For_With_Item_Kind()
+        {
+            using var source = new CancellationTokenSource();
+
+            // ReSharper disable once MethodSupportsCancellation
+            Assert.ThrowsAsync<OperationCanceledException>(
+                async () =>
+                {
+                    await foreach (var _ in Yield().WithItemKind().WithCancellation(source.Token))
+                    {
+                        source.Cancel();
+                    }
+                }
+            );
+        }
+
+        private static async IAsyncEnumerable<string> Yield([EnumeratorCancellation] CancellationToken token = default)
+        {
+            yield return "Dog";
+            await Task.Delay(TimeSpan.FromMilliseconds(10), token);
+            yield return "Cat";
+            token.ThrowIfCancellationRequested();
+            yield return "Sparrow";
         }
     }
 }
