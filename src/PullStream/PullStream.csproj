@@ -50,7 +50,7 @@
     <Title>PullStream</Title>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0</FileVersion>
-    <Version>1.0.1</Version>
+    <Version>1.1.0</Version>
     <Authors>Alexey Pepelev</Authors>
     <Product>PullStream</Product>
     <Description>PullStream allows to create lazy System.IO.Stream based on IEnumerable</Description>
