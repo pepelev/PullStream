@@ -111,10 +111,12 @@ namespace PullStream
         }
 
 #if !NETSTANDARD2_0
-        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = new())
+        public override System.Threading.Tasks.ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default)
         {
             var read = Read(buffer.Span);
-            return new ValueTask<int>(read);
+            return new System.Threading.Tasks.ValueTask<int>(read);
         }
 #endif
 
