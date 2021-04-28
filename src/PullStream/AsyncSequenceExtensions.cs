@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -72,6 +74,41 @@ namespace PullStream
             }
 
             return sequence.Select((item, index) => (index, item));
+        }
+
+        internal static async IAsyncEnumerable<ArraySegment<byte>> Chunks(
+            this IAsyncEnumerable<Stream> streams,
+            ArrayPool<byte> pool,
+            int size,
+            [EnumeratorCancellation] CancellationToken token = default)
+        {
+            var buffer = pool.Rent(size);
+            try
+            {
+                await foreach (var stream in streams.WithCancellation(token))
+                {
+#if !NETSTANDARD2_0
+                    await
+#endif
+                    using (stream)
+                    {
+                        while (true)
+                        {
+                            var read = await stream.ReadAsync(buffer, 0, size, token);
+                            if (read <= 0)
+                            {
+                                break;
+                            }
+
+                            yield return new ArraySegment<byte>(buffer, 0, read);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                pool.Return(buffer);
+            }
         }
     }
 }

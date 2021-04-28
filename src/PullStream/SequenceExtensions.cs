@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace PullStream
@@ -67,6 +69,37 @@ namespace PullStream
             }
 
             return sequence.Select((item, index) => (index, item));
+        }
+
+        internal static IEnumerable<ArraySegment<byte>> Chunks(
+            this IEnumerable<Stream> streams,
+            ArrayPool<byte> pool,
+            int size)
+        {
+            var buffer = pool.Rent(size);
+            try
+            {
+                foreach (var stream in streams)
+                {
+                    using (stream)
+                    {
+                        while (true)
+                        {
+                            var read = stream.Read(buffer, 0, size);
+                            if (read <= 0)
+                            {
+                                break;
+                            }
+
+                            yield return new ArraySegment<byte>(buffer, 0, read);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                pool.Return(buffer);
+            }
         }
     }
 }
