@@ -12,8 +12,8 @@ namespace PullStream.Csv.Tests
     public sealed class CsvStreamShould
     {
         [Test]
-        [TestCase(LastNewLine.No, ExpectedResult = "Name,Age\nAlice,27\nBob,26")]
-        [TestCase(LastNewLine.Yes, ExpectedResult = "Name,Age\nAlice,27\nBob,26\n")]
+        [TestCase(LastNewLine.No, ExpectedResult = "Name,Age\r\nAlice,27\r\nBob,26")]
+        [TestCase(LastNewLine.Yes, ExpectedResult = "Name,Age\r\nAlice,27\r\nBob,26\r\n")]
         public string Contain_Csv(LastNewLine lastNewLine)
         {
             var persons = new[]
@@ -32,8 +32,8 @@ namespace PullStream.Csv.Tests
         }
 
         [Test]
-        [TestCase(LastNewLine.No, ExpectedResult = "Name,Age\nCharlie,9\nDaisy,7")]
-        [TestCase(LastNewLine.Yes, ExpectedResult = "Name,Age\nCharlie,9\nDaisy,7\n")]
+        [TestCase(LastNewLine.No, ExpectedResult = "Name,Age\r\nCharlie,9\r\nDaisy,7")]
+        [TestCase(LastNewLine.Yes, ExpectedResult = "Name,Age\r\nCharlie,9\r\nDaisy,7\r\n")]
         public async Task<string> Contain_Csv_Async(LastNewLine lastNewLine)
         {
             var persons = new[]
@@ -88,16 +88,15 @@ namespace PullStream.Csv.Tests
             var csv = reader.ReadToEnd();
 
             csv.Should().Be(
-                "Name,Feature,Origin\n" +
-                "Green tea,Improve brain function,China\n" +
-                "Coffee,Invigorate,Africa\n" +
+                "Name,Feature,Origin\r\n" +
+                "Green tea,Improve brain function,China\r\n" +
+                "Coffee,Invigorate,Africa\r\n" +
                 "Kvass,Good for okroshka,Russia"
             );
         }
 
         private static CsvConfiguration Configuration => new(CultureInfo.InvariantCulture)
         {
-            NewLine = NewLine.LF,
             Encoding = Encoding.UTF8
         };
 
