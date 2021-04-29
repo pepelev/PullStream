@@ -20,4 +20,9 @@
     <ProjectReference Include="..\PullStream.Csv\PullStream.Csv.csproj" />
   </ItemGroup>
 
+  <!-- Used to test against different versions of package in Github Actions -->
+  <ItemGroup Condition=" '$(CsvHelperVersion)' != '' ">
+    <PackageReference Include="CsvHelper" Version="$(CsvHelperVersion)" />
+  </ItemGroup>
+
 </Project>

@@ -3,17 +3,14 @@ name: Test
 on:
   pull_request:
     branches: [ main ]
-
+defaults:
+  run:
+    working-directory: ./src
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
 jobs:
-  main:
-
+  test-core:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./src
-    env:
-      DOTNET_CLI_TELEMETRY_OPTOUT: 1
-
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -22,5 +19,38 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 5.0.103
+
     - name: Test
-      run: dotnet test --verbosity normal
+      run: dotnet test --configuration Debug --verbosity normal PullStream.Tests
+
+  test-csv:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        csv-helper-version:
+          - '13.0.0'
+          - '14.0.0'
+          - '15.0.0'
+          - '16.0.0'
+          - '17.0.0'
+          - '18.0.0'
+          - '19.0.0'
+          - '20.0.0'
+          - '21.0.0'
+          - '22.0.0'
+          - '23.0.0'
+          - '24.0.0'
+          - '25.0.0'
+          - '26.0.0'
+          - '27.0.0'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.103
+
+    - name: Test
+      run: 'dotnet test --configuration Debug --verbosity normal PullStream.Csv.Tests /p:CsvHelperVersion=${{ matrix.csv-helper-version }}'
