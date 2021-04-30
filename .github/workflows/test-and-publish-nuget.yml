@@ -43,6 +43,7 @@ jobs:
           - '25.0.0'
           - '26.0.0'
           - '27.0.0'
+      fail-fast: false
     steps:
     - name: Checkout
       uses: actions/checkout@v2
