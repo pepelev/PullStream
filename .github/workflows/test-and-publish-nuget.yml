@@ -99,7 +99,7 @@ jobs:
         PROJECT_FILE_PATH: ./src/PullStream.Csv/PullStream.Csv.csproj
         VERSION_REGEX: ^\s*<Version>(.*)<\/Version>\s*$
         TAG_COMMIT: true
-        TAG_FORMAT: v*
+        TAG_FORMAT: csv-v*
         NUGET_KEY: ${{secrets.NUGETKEY}}
         NUGET_SOURCE: https://api.nuget.org
         INCLUDE_SYMBOLS: true
