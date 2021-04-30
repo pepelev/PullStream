@@ -97,7 +97,6 @@ namespace PullStream.Csv.Tests
 
         private static CsvConfiguration Configuration => new(CultureInfo.InvariantCulture)
         {
-            NewLine = NewLine.LF,
             Encoding = Encoding.UTF8
         };
 
