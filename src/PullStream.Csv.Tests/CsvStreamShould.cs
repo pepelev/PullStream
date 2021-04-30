@@ -12,9 +12,11 @@ namespace PullStream.Csv.Tests
     public sealed class CsvStreamShould
     {
         [Test]
-        [TestCase(LastNewLine.No, ExpectedResult = "Name,Age\nAlice,27\nBob,26")]
-        [TestCase(LastNewLine.Yes, ExpectedResult = "Name,Age\nAlice,27\nBob,26\n")]
-        public string Contain_Csv(LastNewLine lastNewLine)
+        [TestCase(LastNewLine.No, true, ExpectedResult = "Name,Age\nAlice,27\nBob,26")]
+        [TestCase(LastNewLine.Yes, true, ExpectedResult = "Name,Age\nAlice,27\nBob,26\n")]
+        [TestCase(LastNewLine.No, false, ExpectedResult = "Alice,27\nBob,26")]
+        [TestCase(LastNewLine.Yes, false, ExpectedResult = "Alice,27\nBob,26\n")]
+        public string Contain_Csv(LastNewLine lastNewLine, bool header)
         {
             var persons = new[]
             {
@@ -22,7 +24,7 @@ namespace PullStream.Csv.Tests
                 new Person("Bob", 26)
             };
             using var csvStream = CsvStream
-                .Of(persons, Configuration, lastNewLine)
+                .Of(persons, Configuration(header), lastNewLine)
                 .Build();
             using var reader = new StreamReader(csvStream, Encoding.UTF8);
 
@@ -32,9 +34,11 @@ namespace PullStream.Csv.Tests
         }
 
         [Test]
-        [TestCase(LastNewLine.No, ExpectedResult = "Name,Age\nCharlie,9\nDaisy,7")]
-        [TestCase(LastNewLine.Yes, ExpectedResult = "Name,Age\nCharlie,9\nDaisy,7\n")]
-        public async Task<string> Contain_Csv_Async(LastNewLine lastNewLine)
+        [TestCase(LastNewLine.No, true, ExpectedResult = "Name,Age\nCharlie,9\nDaisy,7")]
+        [TestCase(LastNewLine.Yes, true, ExpectedResult = "Name,Age\nCharlie,9\nDaisy,7\n")]
+        [TestCase(LastNewLine.No, false, ExpectedResult = "Charlie,9\nDaisy,7")]
+        [TestCase(LastNewLine.Yes, false, ExpectedResult = "Charlie,9\nDaisy,7\n")]
+        public async Task<string> Contain_Csv_Async(LastNewLine lastNewLine, bool header)
         {
             var persons = new[]
             {
@@ -45,7 +49,7 @@ namespace PullStream.Csv.Tests
             await
 #endif
             using var csvStream = CsvStream
-                .Of(persons.ToAsyncEnumerable(), Configuration, lastNewLine)
+                .Of(persons.ToAsyncEnumerable(), Configuration(header), lastNewLine)
                 .Build();
             using var reader = new StreamReader(csvStream, Encoding.UTF8);
 
@@ -80,7 +84,7 @@ namespace PullStream.Csv.Tests
             };
             using var csvStream = CsvStream.Of(
                     drinks,
-                    Configuration
+                    Configuration()
                 )
                 .Build();
             using var reader = new StreamReader(csvStream, Encoding.UTF8);
@@ -95,9 +99,10 @@ namespace PullStream.Csv.Tests
             );
         }
 
-        private static CsvConfiguration Configuration => new(CultureInfo.InvariantCulture)
+        private static CsvConfiguration Configuration(bool header = true) => new(CultureInfo.InvariantCulture)
         {
             Encoding = Encoding.UTF8,
+            HasHeaderRecord = header,
 #if CsvHelper_NewLineEnum
             NewLine = NewLine.LF
 #elif CsvHelper_NewLineChar
