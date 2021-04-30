@@ -97,7 +97,14 @@ namespace PullStream.Csv.Tests
 
         private static CsvConfiguration Configuration => new(CultureInfo.InvariantCulture)
         {
-            Encoding = Encoding.UTF8
+            Encoding = Encoding.UTF8,
+#if CsvHelper_NewLineEnum
+            NewLine = NewLine.LF
+#elif CsvHelper_NewLineChar
+            NewLine = '\n'
+#elif CsvHelper_NewLineString
+            NewLine = "\n"
+#endif
         };
 
         public class Person
