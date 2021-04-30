@@ -36,6 +36,10 @@ System.IO.Stream stream = PullStream.SequenceStream.FromStrings(
 
 How we have a stream that will lazily enumerate `strings` and return them as utf8 bytes while we read it.
 
+### Csv
+
+For working with csv see [PullStream.Csv](src/PullStream.Csv)
+
 ### Builder
 
 Consider a more flexible way to create streams.
@@ -175,4 +179,4 @@ It's unsafe to work with stream that thrown exception on read attempt. The strea
 
 When stream content is read stream enumerates next element of the sequence and write it to internal buffer. If internal buffer is able to fulfill read request that data is returned and buffer is cut on the size of returned data. Otherwise next element of the sequence is requested and written to internal buffer. Thus, the stream doesn't keep entire content in memory, once the data is read it's dropped.
 
-Such approach can cause big latency if the context uses caching and sequence elements come slowly. To prevent this the user may set caching buffer size to lower values or `Flush()` the context on every item writing.
+Such approach can cause big latency if the context uses caching and sequence elements come slowly. To prevent this the user may set caching buffer size to lower values or `Flush()` the context on every item writing. Stream expects the context to flush all buffered data during its disposal.
