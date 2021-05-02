@@ -166,6 +166,19 @@ namespace PullStream
 
                 return new(this, sequence, ArrayPool<byte>.Shared, CancellationToken.None);
             }
+
+            public Builder<TContext> Over(Func<Stream, Stream> wrap)
+            {
+                if (wrap == null)
+                {
+                    throw new ArgumentNullException(nameof(wrap));
+                }
+
+                return new(
+                    stream => factory(wrap(stream)),
+                    dispose
+                );
+            }
         }
 
         public sealed class Builder<TItem, TContext>
