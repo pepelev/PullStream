@@ -113,7 +113,7 @@ namespace PullStream
         public static Stream Concatenation(IEnumerable<Stream> streams, ArrayPool<byte> pool, int chunkSize) =>
             UsingStream()
                 .On(streams.Chunks(pool, chunkSize))
-                .Writing(Write);
+                .Build();
 
         public static Stream Concatenation(
             IAsyncEnumerable<Stream> streams,
@@ -124,17 +124,7 @@ namespace PullStream
                 // ReSharper disable once MethodSupportsCancellation
                 .On(streams.Chunks(pool, chunkSize))
                 .WithCancellation(token)
-                .Writing(Write);
-
-        private static void Write(Stream output, ArraySegment<byte> segment)
-        {
-            if (segment.Array == null)
-            {
-                throw new ArgumentException("segment.Array is null");
-            }
-
-            output.Write(segment.Array, segment.Offset, segment.Count);
-        }
+                .Build();
 
         public sealed class Builder<TContext>
         {
