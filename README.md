@@ -9,7 +9,7 @@ __PullStream__ PullStream allows to create lazy `System.IO.Stream` based on `IEn
 Install [NuGet package](https://www.nuget.org/packages/PullStream/) using Package Manager
 
 ```
-Install-Package PullStream -Version 1.1.0
+Install-Package PullStream -Version 1.2.0
 ```
 
 ## Why do i need a lazy Stream?
