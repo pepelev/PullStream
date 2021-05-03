@@ -71,7 +71,7 @@ namespace PullStream
             return sequence.Select((item, index) => (index, item));
         }
 
-        internal static IEnumerable<ArraySegment<byte>> Chunks(
+        internal static IEnumerable<Bytes> Chunks(
             this IEnumerable<Stream> streams,
             ArrayPool<byte> pool,
             int size)
@@ -91,7 +91,7 @@ namespace PullStream
                                 break;
                             }
 
-                            yield return new ArraySegment<byte>(buffer, 0, read);
+                            yield return new Bytes(buffer, 0, read);
                         }
                     }
                 }
