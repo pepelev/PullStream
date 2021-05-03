@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -11,6 +12,7 @@ namespace PullStream
 {
     public static class AsyncSequenceExtensions
     {
+        [Pure]
         public static IAsyncEnumerable<Item<T>> AsItems<T>(this IAsyncEnumerable<T> sequence)
         {
             if (sequence == null)
@@ -27,6 +29,7 @@ namespace PullStream
             );
         }
 
+        [Pure]
         public static IAsyncEnumerable<(ItemKind Kind, T Item)> WithItemKind<T>(this IAsyncEnumerable<T> sequence)
         {
             if (sequence == null)
@@ -37,6 +40,7 @@ namespace PullStream
             return sequence.WithItemKindYield();
         }
 
+        [Pure]
         private static async IAsyncEnumerable<(ItemKind Kind, T Item)> WithItemKindYield<T>(
             this IAsyncEnumerable<T> sequence,
             [EnumeratorCancellation] CancellationToken token = default)
@@ -66,6 +70,7 @@ namespace PullStream
             yield return (ItemKind.Last, current);
         }
 
+        [Pure]
         public static IAsyncEnumerable<(int Index, T Item)> Indexed<T>(this IAsyncEnumerable<T> sequence)
         {
             if (sequence == null)
@@ -76,6 +81,7 @@ namespace PullStream
             return sequence.Select((item, index) => (index, item));
         }
 
+        [Pure]
         internal static async IAsyncEnumerable<Bytes> Chunks(
             this IAsyncEnumerable<Stream> streams,
             ArrayPool<byte> pool,

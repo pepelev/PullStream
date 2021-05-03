@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -9,8 +10,10 @@ namespace PullStream
 {
     public static class SequenceStream
     {
+        [Pure]
         public static Builder<Stream> UsingStream() => Using(stream => stream);
 
+        [Pure]
         public static Builder<T> Using<T>(Func<Stream, T> contextFactory) where T : IDisposable
         {
             if (contextFactory == null)
@@ -21,6 +24,7 @@ namespace PullStream
             return Using(contextFactory, disposable => disposable.Dispose());
         }
 
+        [Pure]
         public static Builder<T> Using<T>(Func<Stream, T> contextFactory, Action<T> dispose)
         {
             if (contextFactory == null)
@@ -36,6 +40,7 @@ namespace PullStream
             return new(contextFactory, dispose);
         }
 
+        [Pure]
         public static Stream FromStrings(IEnumerable<string> sequence, Encoding encoding, string separator)
         {
             if (sequence == null)
@@ -69,9 +74,11 @@ namespace PullStream
                 );
         }
 
+        [Pure]
         public static Stream FromStrings(IAsyncEnumerable<string> sequence, Encoding encoding, string separator) =>
             FromStrings(sequence, encoding, separator, CancellationToken.None);
 
+        [Pure]
         public static Stream FromStrings(
             IAsyncEnumerable<string> sequence,
             Encoding encoding,
@@ -110,11 +117,13 @@ namespace PullStream
                 );
         }
 
+        [Pure]
         public static Stream Concatenation(IEnumerable<Stream> streams, ArrayPool<byte> pool, int chunkSize) =>
             UsingStream()
                 .On(streams.Chunks(pool, chunkSize))
                 .Build();
 
+        [Pure]
         public static Stream Concatenation(
             IAsyncEnumerable<Stream> streams,
             ArrayPool<byte> pool,
@@ -137,6 +146,7 @@ namespace PullStream
                 this.dispose = dispose;
             }
 
+            [Pure]
             public Builder<TItem, TContext> On<TItem>(IEnumerable<TItem> sequence)
             {
                 if (sequence == null)
@@ -147,6 +157,7 @@ namespace PullStream
                 return new(this, sequence, ArrayPool<byte>.Shared);
             }
 
+            [Pure]
             public AsyncBuilder<TItem, TContext> On<TItem>(IAsyncEnumerable<TItem> sequence)
             {
                 if (sequence == null)
@@ -157,6 +168,7 @@ namespace PullStream
                 return new(this, sequence, ArrayPool<byte>.Shared, CancellationToken.None);
             }
 
+            [Pure]
             public Builder<TContext> Over(Func<Stream, Stream> wrap)
             {
                 if (wrap == null)
@@ -171,6 +183,7 @@ namespace PullStream
             }
         }
 
+        [Pure]
         public sealed class Builder<TItem, TContext>
         {
             private readonly Builder<TContext> builder;
@@ -184,24 +197,28 @@ namespace PullStream
                 this.pool = pool;
             }
 
+            [Pure]
             public Builder<(ItemKind Kind, TItem Item), TContext> WithItemKind() => new(
                 builder,
                 sequence.WithItemKind(),
                 pool
             );
 
+            [Pure]
             public Builder<Item<TItem>, TContext> AsItems() => new(
                 builder,
                 sequence.AsItems(),
                 pool
             );
 
+            [Pure]
             public Builder<(int Index, TItem Item), TContext> Indexed() => new(
                 builder,
                 sequence.Indexed(),
                 pool
             );
 
+            [Pure]
             public Builder<TItem, TContext> Pooling(ArrayPool<byte> newPool)
             {
                 if (newPool == null)
@@ -212,6 +229,7 @@ namespace PullStream
                 return new(builder, sequence, newPool);
             }
 
+            [Pure]
             public Stream Writing(Action<TContext, TItem> write)
             {
                 if (write == null)
@@ -248,6 +266,7 @@ namespace PullStream
                 this.token = token;
             }
 
+            [Pure]
             public AsyncBuilder<(ItemKind Kind, TItem Item), TContext> WithItemKind() => new(
                 builder,
                 sequence.WithItemKind(),
@@ -255,6 +274,7 @@ namespace PullStream
                 token
             );
 
+            [Pure]
             public AsyncBuilder<Item<TItem>, TContext> AsItems() => new(
                 builder,
                 sequence.AsItems(),
@@ -262,6 +282,7 @@ namespace PullStream
                 token
             );
 
+            [Pure]
             public AsyncBuilder<(int Index, TItem Item), TContext> Indexed() => new(
                 builder,
                 sequence.Indexed(),
@@ -269,6 +290,7 @@ namespace PullStream
                 token
             );
 
+            [Pure]
             public AsyncBuilder<TItem, TContext> Pooling(ArrayPool<byte> newPool)
             {
                 if (newPool == null)
@@ -279,6 +301,7 @@ namespace PullStream
                 return new(builder, sequence, newPool, token);
             }
 
+            [Pure]
             public AsyncBuilder<TItem, TContext> WithCancellation(CancellationToken cancellationToken) => new(
                 builder,
                 sequence,
@@ -286,6 +309,7 @@ namespace PullStream
                 cancellationToken
             );
 
+            [Pure]
             public Stream Writing(Action<TContext, TItem> write) => new AsyncSequenceStream<TItem, TContext>(
                 builder.factory,
                 builder.dispose,

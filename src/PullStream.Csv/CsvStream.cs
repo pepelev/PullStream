@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using CsvHelper;
@@ -8,6 +9,7 @@ namespace PullStream.Csv
 {
     public static class CsvStream
     {
+        [Pure]
         public static SequenceStream.Builder<CsvRow, CsvWriter> Of<T>(
             IEnumerable<T> sequence,
             CsvConfiguration configuration,
@@ -18,6 +20,7 @@ namespace PullStream.Csv
                 Rows(sequence, configuration, lastNewLine)
             );
 
+        [Pure]
         public static SequenceStream.AsyncBuilder<CsvRow, CsvWriter> Of<T>(
             IAsyncEnumerable<T> sequence,
             CsvConfiguration configuration,
@@ -80,9 +83,11 @@ namespace PullStream.Csv
             );
         }
 
+        [Pure]
         public static Stream Build(this SequenceStream.Builder<CsvRow, CsvWriter> builder) =>
             builder.Writing(Write);
 
+        [Pure]
         public static Stream Build(this SequenceStream.AsyncBuilder<CsvRow, CsvWriter> builder) =>
             builder.Writing(Write);
 

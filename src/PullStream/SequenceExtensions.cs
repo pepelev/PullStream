@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 
@@ -8,6 +9,7 @@ namespace PullStream
 {
     public static class SequenceExtensions
     {
+        [Pure]
         public static IEnumerable<Item<T>> AsItems<T>(this IEnumerable<T> sequence)
         {
             if (sequence == null)
@@ -24,6 +26,7 @@ namespace PullStream
             );
         }
 
+        [Pure]
         public static IEnumerable<(ItemKind Kind, T Item)> WithItemKind<T>(this IEnumerable<T> sequence)
         {
             if (sequence == null)
@@ -61,6 +64,7 @@ namespace PullStream
             }
         }
 
+        [Pure]
         public static IEnumerable<(int Index, T Item)> Indexed<T>(this IEnumerable<T> sequence)
         {
             if (sequence == null)
@@ -71,6 +75,7 @@ namespace PullStream
             return sequence.Select((item, index) => (index, item));
         }
 
+        [Pure]
         internal static IEnumerable<Bytes> Chunks(
             this IEnumerable<Stream> streams,
             ArrayPool<byte> pool,
