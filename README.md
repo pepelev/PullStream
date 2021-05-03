@@ -125,9 +125,9 @@ foreach ((int index, ItemKind kind, string name) in enrichedNames)
 - Last - This item is last and there are previous items
 - Sigle - This item is the only item in sequence, there are no others
 
-There are [methods](src/PullStream/ItemKindExtensions.cs#L3) to simplify work with `ItemKind`. For example, [IsFirst() method](src/PullStream/ItemKindExtensions.cs#L5) matches `Single` and `First` values.
+There are [methods](src/PullStream/ItemKindExtensions.cs#L3) to simplify work with `ItemKind`. For example, [IsFirst() method](src/PullStream/ItemKindExtensions.cs#L8) matches `Single` and `First` values.
 
-Alternative way to get such information is to call [AsItems() method](src/PullStream/SequenceStream.Builder.cs#L164) when stream is constructed.
+Alternative way to get such information is to call [AsItems() method](src/PullStream/SequenceStream.Builder.cs#L208) when stream is constructed.
 
 [Go to code](src/PullStream.Tests/Examples.cs#L51)
 ```csharp
