@@ -1,5 +1,6 @@
 namespace PullStream.Json.Tests
 {
+    using System;
     using System.IO;
     using System.Linq;
     using System.Text;
@@ -65,12 +66,8 @@ namespace PullStream.Json.Tests
                 .Build();
             using var reader = new StreamReader(stream, Encoding.UTF8);
             var json = reader.ReadToEnd();
-            json.Should().Be(@"[
-  72,
-  17,
-  50,
-  4
-]");
+            var nl = Environment.NewLine;
+            json.Should().Be($"[{nl}  72,{nl}  17,{nl}  50,{nl}  4{nl}]");
         }
     }
 }
