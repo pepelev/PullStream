@@ -27,7 +27,7 @@ jobs:
 
   publish-pullstream:
     runs-on: ubuntu-latest
-    needs: test-core
+    needs: test-pullstream
     if: ${{ github.event_name == 'push' }}
     steps:
     - name: Checkout
