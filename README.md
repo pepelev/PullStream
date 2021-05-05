@@ -40,6 +40,10 @@ How we have a stream that will lazily enumerate `strings` and return them as utf
 
 For working with csv see [PullStream.Csv](src/PullStream.Csv)
 
+### Json
+
+For working with json see [PullStream.Json](src/PullStream.Json)
+
 ### Builder
 
 Consider a more flexible way to create streams.
