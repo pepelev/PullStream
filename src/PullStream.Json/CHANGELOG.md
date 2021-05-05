@@ -14,4 +14,4 @@ Nothing to write yet
 - Readme [#18](https://github.com/pepelev/PullStream/issues/18)
 
 [Unreleased]: https://github.com/pepelev/pullstream/compare/pullstream-json-v1.0.0...pullstream-json
-[0.1.0]: https://github.com/pepelev/pullstream/releases/tag/pullstream-json-v1.0.0
+[1.0.0]: https://github.com/pepelev/pullstream/releases/tag/pullstream-json-v1.0.0
