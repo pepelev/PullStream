@@ -1,15 +1,17 @@
-name: Test
+name: PullStream workflow
 
 on:
+  push:
+    branches: [ pullstream ]
   pull_request:
-    branches: [ main ]
+    branches: [ pullstream ]
 defaults:
   run:
     working-directory: ./src
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
 jobs:
-  test-core:
+  test-pullstream:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
@@ -23,27 +25,10 @@ jobs:
     - name: Test
       run: dotnet test --configuration Debug --verbosity normal PullStream.Tests
 
-  test-csv:
+  publish-pullstream:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        csv-helper-version:
-          - '13.0.0'
-          - '14.0.0'
-          - '15.0.0'
-          - '16.0.0'
-          - '17.0.0'
-          - '18.0.0'
-          - '19.0.0'
-          - '20.0.0'
-          - '21.0.0'
-          - '22.0.0'
-          - '23.0.0'
-          - '24.0.0'
-          - '25.0.0'
-          - '26.0.0'
-          - '27.0.0'
-      fail-fast: false
+    needs: test-pullstream
+    if: ${{ github.event_name == 'push' }}
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -53,5 +38,14 @@ jobs:
       with:
         dotnet-version: 5.0.103
 
-    - name: Test
-      run: 'dotnet test --configuration Debug --verbosity normal PullStream.Csv.Tests /p:CsvHelperVersion=${{ matrix.csv-helper-version }}'
+    - name: Publish on version change
+      id: publish_nuget
+      uses: rohith/publish-nuget@v2
+      with:
+        PROJECT_FILE_PATH: ./src/PullStream/PullStream.csproj
+        VERSION_REGEX: ^\s*<Version>(.*)<\/Version>\s*$
+        TAG_COMMIT: true
+        TAG_FORMAT: pullstream-v*
+        NUGET_KEY: ${{secrets.NUGETKEY}}
+        NUGET_SOURCE: https://api.nuget.org
+        INCLUDE_SYMBOLS: true
