@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- NotDisposing [#41](issues/41)
+- NotDisposing [#41](https://github.com/pepelev/PullStream/issues/41)
 
 ## [1.2.0] - 2021-05-03
 ### Added
