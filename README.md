@@ -122,12 +122,12 @@ foreach ((int index, ItemKind kind, string name) in enrichedNames)
 }
 ```
 
-[ItemKind](src/PullStream/ItemKind.cs#L6) may be one the following:
+[ItemKind](src/PullStream/ItemKind.cs#L6) may be one of the following:
 
 - First - This item is first and there are more items
 - Middle - This item is neither the first nor the last
 - Last - This item is last and there are previous items
-- Sigle - This item is the only item in sequence, there are no others
+- Single - This item is the only item in sequence, there are no others
 
 There are [methods](src/PullStream/ItemKindExtensions.cs#L3) to simplify work with `ItemKind`. For example, [IsFirst() method](src/PullStream/ItemKindExtensions.cs#L8) matches `Single` and `First` values.
 
