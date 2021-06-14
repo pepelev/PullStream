@@ -9,7 +9,7 @@ namespace PullStream.Csv
 
         public Header(Type type)
         {
-            this.type = type;
+            this.type = type ?? throw new ArgumentNullException(nameof(type));
         }
 
         public override void Write(CsvWriter target)
