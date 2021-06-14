@@ -1,4 +1,5 @@
-﻿using CsvHelper;
+﻿using System;
+using CsvHelper;
 
 namespace PullStream.Csv
 {
@@ -8,7 +9,7 @@ namespace PullStream.Csv
 
         public Content(T value)
         {
-            this.value = value;
+            this.value = value ?? throw new ArgumentNullException(nameof(value));
         }
 
         public override void Write(CsvWriter target)

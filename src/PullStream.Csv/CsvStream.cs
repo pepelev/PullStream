@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
@@ -9,27 +10,75 @@ namespace PullStream.Csv
 {
     public static class CsvStream
     {
+        private static readonly List<LastNewLine> validLastNewLineValues = new(2)
+        {
+            LastNewLine.No,
+            LastNewLine.Yes
+        };
+
         [Pure]
         public static SequenceStream.Builder<CsvRow, CsvWriter> Of<T>(
             IEnumerable<T> sequence,
             CsvConfiguration configuration,
-            LastNewLine lastNewLine = LastNewLine.No) => SequenceStream.Using(
-                stream => CreateCsv(stream, configuration)
-            )
-            .On(
-                Rows(sequence, configuration, lastNewLine)
-            );
+            LastNewLine lastNewLine = LastNewLine.No)
+        {
+            if (sequence == null)
+            {
+                throw new ArgumentNullException(nameof(sequence));
+            }
+
+            if (configuration == null)
+            {
+                throw new ArgumentNullException(nameof(configuration));
+            }
+
+            ValidateLastNewLine(lastNewLine, nameof(lastNewLine));
+            return SequenceStream.Using(
+                    stream => CreateCsv(stream, configuration)
+                )
+                .On(
+                    Rows(sequence, configuration, lastNewLine)
+                );
+        }
 
         [Pure]
         public static SequenceStream.AsyncBuilder<CsvRow, CsvWriter> Of<T>(
             IAsyncEnumerable<T> sequence,
             CsvConfiguration configuration,
-            LastNewLine lastNewLine = LastNewLine.No) => SequenceStream.Using(
-                stream => CreateCsv(stream, configuration)
-            )
-            .On(
-                Rows(sequence, configuration, lastNewLine)
+            LastNewLine lastNewLine = LastNewLine.No)
+        {
+            if (sequence == null)
+            {
+                throw new ArgumentNullException(nameof(sequence));
+            }
+
+            if (configuration == null)
+            {
+                throw new ArgumentNullException(nameof(configuration));
+            }
+
+            ValidateLastNewLine(lastNewLine, nameof(lastNewLine));
+            return SequenceStream.Using(
+                    stream => CreateCsv(stream, configuration)
+                )
+                .On(
+                    Rows(sequence, configuration, lastNewLine)
+                );
+        }
+
+        private static void ValidateLastNewLine(LastNewLine lastNewLine, string name)
+        {
+            if (validLastNewLineValues.Contains(lastNewLine))
+            {
+                return;
+            }
+
+            throw new ArgumentOutOfRangeException(
+                name,
+                lastNewLine,
+                $"Value must be one of [{string.Join(", ", validLastNewLineValues)}]"
             );
+        }
 
         private static CsvWriter CreateCsv(Stream stream, CsvConfiguration configuration) => new(
             new StreamWriter(
@@ -84,12 +133,26 @@ namespace PullStream.Csv
         }
 
         [Pure]
-        public static Stream Build(this SequenceStream.Builder<CsvRow, CsvWriter> builder) =>
-            builder.Writing(Write);
+        public static Stream Build(this SequenceStream.Builder<CsvRow, CsvWriter> builder)
+        {
+            if (builder == null)
+            {
+                throw new ArgumentNullException(nameof(builder));
+            }
+
+            return builder.Writing(Write);
+        }
 
         [Pure]
-        public static Stream Build(this SequenceStream.AsyncBuilder<CsvRow, CsvWriter> builder) =>
-            builder.Writing(Write);
+        public static Stream Build(this SequenceStream.AsyncBuilder<CsvRow, CsvWriter> builder)
+        {
+            if (builder == null)
+            {
+                throw new ArgumentNullException(nameof(builder));
+            }
+
+            return builder.Writing(Write);
+        }
 
         private static void Write(CsvWriter output, CsvRow row)
         {
