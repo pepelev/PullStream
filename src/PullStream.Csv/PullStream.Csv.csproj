@@ -24,7 +24,7 @@
 
   <ItemGroup>
     <PackageReference Include="CsvHelper" Version="[13.0.0,28.0.0)" />
-    <PackageReference Include="PullStream" Version="[1.1.0,2.0.0)" />
+    <PackageReference Include="PullStream" Version="[1.2.0,2.0.0)" />
   </ItemGroup>
 
   <ItemGroup>

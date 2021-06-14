@@ -3,11 +3,11 @@ using CsvHelper;
 
 namespace PullStream.Csv
 {
-    public sealed class LineFeed : CsvRow
+    public sealed class LineFeed : OutputChunk<CsvWriter>
     {
-        private readonly CsvRow row;
+        private readonly OutputChunk<CsvWriter> row;
 
-        public LineFeed(CsvRow row)
+        public LineFeed(OutputChunk<CsvWriter> row)
         {
             this.row = row ?? throw new ArgumentNullException(nameof(row));
         }

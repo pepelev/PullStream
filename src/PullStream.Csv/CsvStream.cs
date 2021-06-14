@@ -17,7 +17,7 @@ namespace PullStream.Csv
         };
 
         [Pure]
-        public static SequenceStream.Builder<CsvRow, CsvWriter> Of<T>(
+        public static SequenceStream.Builder<OutputChunk<CsvWriter>, CsvWriter> Of<T>(
             IEnumerable<T> sequence,
             CsvConfiguration configuration,
             LastNewLine lastNewLine = LastNewLine.No)
@@ -42,7 +42,7 @@ namespace PullStream.Csv
         }
 
         [Pure]
-        public static SequenceStream.AsyncBuilder<CsvRow, CsvWriter> Of<T>(
+        public static SequenceStream.AsyncBuilder<OutputChunk<CsvWriter>, CsvWriter> Of<T>(
             IAsyncEnumerable<T> sequence,
             CsvConfiguration configuration,
             LastNewLine lastNewLine = LastNewLine.No)
@@ -90,19 +90,19 @@ namespace PullStream.Csv
             configuration
         );
 
-        private static IEnumerable<CsvRow> Rows<T>(
+        private static IEnumerable<OutputChunk<CsvWriter>> Rows<T>(
             IEnumerable<T> sequence,
             CsvConfiguration configuration,
             LastNewLine lastNewLine)
         {
-            var data = sequence.Select(item => new Content<T>(item) as CsvRow);
+            var data = sequence.Select(item => new Content<T>(item) as OutputChunk<CsvWriter>);
             var content = configuration.HasHeaderRecord
                 ? data.Prepend(new Header(typeof(T)))
                 : data;
 
             if (lastNewLine == LastNewLine.Yes)
             {
-                return content.Select(item => new LineFeed(item) as CsvRow);
+                return content.Select(item => new LineFeed(item) as OutputChunk<CsvWriter>);
             }
 
             return content.WithItemKind().Select(pair => pair.Kind.IsLast()
@@ -111,52 +111,25 @@ namespace PullStream.Csv
             );
         }
 
-        private static IAsyncEnumerable<CsvRow> Rows<T>(
+        private static IAsyncEnumerable<OutputChunk<CsvWriter>> Rows<T>(
             IAsyncEnumerable<T> sequence,
             CsvConfiguration configuration,
             LastNewLine lastNewLine)
         {
-            var data = sequence.Select(item => new Content<T>(item) as CsvRow);
+            var data = sequence.Select(item => new Content<T>(item) as OutputChunk<CsvWriter>);
             var content = configuration.HasHeaderRecord
                 ? data.Prepend(new Header(typeof(T)))
                 : data;
 
             if (lastNewLine == LastNewLine.Yes)
             {
-                return content.Select(item => new LineFeed(item) as CsvRow);
+                return content.Select(item => new LineFeed(item) as OutputChunk<CsvWriter>);
             }
 
             return content.WithItemKind().Select(pair => pair.Kind.IsLast()
                 ? pair.Item
                 : new LineFeed(pair.Item)
             );
-        }
-
-        [Pure]
-        public static Stream Build(this SequenceStream.Builder<CsvRow, CsvWriter> builder)
-        {
-            if (builder == null)
-            {
-                throw new ArgumentNullException(nameof(builder));
-            }
-
-            return builder.Writing(Write);
-        }
-
-        [Pure]
-        public static Stream Build(this SequenceStream.AsyncBuilder<CsvRow, CsvWriter> builder)
-        {
-            if (builder == null)
-            {
-                throw new ArgumentNullException(nameof(builder));
-            }
-
-            return builder.Writing(Write);
-        }
-
-        private static void Write(CsvWriter output, CsvRow row)
-        {
-            row.Write(output);
         }
     }
 }
