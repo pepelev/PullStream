@@ -3,7 +3,7 @@ using CsvHelper;
 
 namespace PullStream.Csv
 {
-    public sealed class Header : CsvRow
+    public sealed class Header : OutputChunk<CsvWriter>
     {
         private readonly Type type;
 
