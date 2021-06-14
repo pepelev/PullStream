@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 Nothing to write yet
 
+## [2.0.1] - 2021-06-15
+### Fixed
+- Fixes changelog link in NuGet package
+
 ## [2.0.0] - 2021-06-15
 ### Changed
 - Now NuGet package targets only netstandard2.0 (there used to be netstandard2.0 and netstandard2.1) [#48](https://github.com/pepelev/PullStream/issues/48)
@@ -25,8 +29,8 @@ Nothing to write yet
 ### Added
 - Csv stream [#8](https://github.com/pepelev/PullStream/issues/8)
 
-[Unreleased]: https://github.com/pepelev/pullstream/compare/csv-v2.0.0...pullstream-csv
-[2.0.0]: https://github.com/pepelev/pullstream/compare/csv-v1.0.1...csv-v2.0.0
-[1.0.1]: https://github.com/pepelev/pullstream/compare/csv-v1.0.0...csv-v1.0.1
+[Unreleased]: https://github.com/pepelev/pullstream/compare/pullstream-csv-v2.0.0...pullstream-csv
+[2.0.0]: https://github.com/pepelev/pullstream/compare/pullstream-csv-v1.0.1...pullstream-csv-v2.0.0
+[1.0.1]: https://github.com/pepelev/pullstream/compare/csv-v1.0.0...pullstream-csv-v1.0.1
 [1.0.0]: https://github.com/pepelev/pullstream/compare/csv-v0.1.0...csv-v1.0.0
 [0.1.0]: https://github.com/pepelev/pullstream/releases/tag/pullstream-json-v0.1.0
