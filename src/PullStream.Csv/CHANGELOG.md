@@ -30,7 +30,7 @@ Nothing to write yet
 - Csv stream [#8](https://github.com/pepelev/PullStream/issues/8)
 
 [Unreleased]: https://github.com/pepelev/pullstream/compare/pullstream-csv-v2.0.1...pullstream-csv
-[2.0.0]: https://github.com/pepelev/pullstream/compare/pullstream-csv-v2.0.0...pullstream-csv-v2.0.1
+[2.0.1]: https://github.com/pepelev/pullstream/compare/pullstream-csv-v2.0.0...pullstream-csv-v2.0.1
 [2.0.0]: https://github.com/pepelev/pullstream/compare/pullstream-csv-v1.0.1...pullstream-csv-v2.0.0
 [1.0.1]: https://github.com/pepelev/pullstream/compare/csv-v1.0.0...pullstream-csv-v1.0.1
 [1.0.0]: https://github.com/pepelev/pullstream/compare/csv-v0.1.0...csv-v1.0.0
