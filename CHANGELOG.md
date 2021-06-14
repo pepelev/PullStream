@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2021-06-15
+### Changed
+- Remove csv related code from pullstream branch [#47](https://github.com/pepelev/PullStream/issues/47)
+
+### Fixed
+- Validate all arguments of public methods [#49](https://github.com/pepelev/PullStream/issues/49)
+
 ## [1.2.0] - 2021-05-03
 ### Added
 - OutputChunk that knows how to write itself into context #27
@@ -46,7 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic functionality #1 #3 #4 #6 #9 #10 #11 #12
 - Logo
 
-[Unreleased]: https://github.com/pepelev/pullstream/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/pepelev/pullstream/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/pepelev/pullstream/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/pepelev/pullstream/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/pepelev/pullstream/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/pepelev/pullstream/compare/v1.0.0...v1.0.1
