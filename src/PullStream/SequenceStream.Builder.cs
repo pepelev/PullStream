@@ -118,22 +118,60 @@ namespace PullStream
         }
 
         [Pure]
-        public static Stream Concatenation(IEnumerable<Stream> streams, ArrayPool<byte> pool, int chunkSize) =>
-            UsingStream()
+        public static Stream Concatenation(IEnumerable<Stream> streams, ArrayPool<byte> pool, int chunkSize)
+        {
+            if (streams == null)
+            {
+                throw new ArgumentNullException(nameof(streams));
+            }
+
+            if (pool == null)
+            {
+                throw new ArgumentNullException(nameof(pool));
+            }
+
+            ValidateChunkSize(chunkSize, nameof(chunkSize));
+            return UsingStream()
                 .On(streams.Chunks(pool, chunkSize))
                 .Build();
+        }
 
         [Pure]
         public static Stream Concatenation(
             IAsyncEnumerable<Stream> streams,
             ArrayPool<byte> pool,
             int chunkSize,
-            CancellationToken token = default) =>
-            UsingStream()
+            CancellationToken token = default)
+        {
+            if (streams == null)
+            {
+                throw new ArgumentNullException(nameof(streams));
+            }
+
+            if (pool == null)
+            {
+                throw new ArgumentNullException(nameof(pool));
+            }
+
+            ValidateChunkSize(chunkSize, nameof(chunkSize));
+            return UsingStream()
                 // ReSharper disable once MethodSupportsCancellation
                 .On(streams.Chunks(pool, chunkSize))
                 .WithCancellation(token)
                 .Build();
+        }
+
+        private static void ValidateChunkSize(int chunkSize, string parameterName)
+        {
+            if (chunkSize <= 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    parameterName,
+                    chunkSize,
+                    "Must be positive"
+                );
+            }
+        }
 
         public sealed class Builder<TContext>
         {
