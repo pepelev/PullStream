@@ -5,107 +5,106 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PullStream.Tests
-{
-    public sealed class SyncAndAsyncMixingStreamFixture : IStreamFixture
-    {
-        private readonly IStreamFixture fixture;
+namespace PullStream.Tests;
 
-        public SyncAndAsyncMixingStreamFixture(IStreamFixture fixture)
+public sealed class SyncAndAsyncMixingStreamFixture : IStreamFixture
+{
+    private readonly IStreamFixture fixture;
+
+    public SyncAndAsyncMixingStreamFixture(IStreamFixture fixture)
+    {
+        this.fixture = fixture;
+    }
+
+    public System.IO.Stream Create<TItem, TContext>(
+        Func<System.IO.Stream, TContext> contextFactory,
+        Action<TContext> dispose,
+        IEnumerable<TItem> sequence,
+        ArrayPool<byte> pool,
+        Action<TContext, TItem> write)
+        => new Stream(
+            fixture.Create(contextFactory, dispose, sequence, pool, write),
+            new Random(Guid.NewGuid().GetHashCode())
+        );
+
+    private sealed class Stream : System.IO.Stream
+    {
+        private readonly System.IO.Stream stream;
+        private readonly Random random;
+
+        public Stream(System.IO.Stream stream, Random random)
         {
-            this.fixture = fixture;
+            this.stream = stream;
+            this.random = random;
         }
 
-        public System.IO.Stream Create<TItem, TContext>(
-            Func<System.IO.Stream, TContext> contextFactory,
-            Action<TContext> dispose,
-            IEnumerable<TItem> sequence,
-            ArrayPool<byte> pool,
-            Action<TContext, TItem> write)
-            => new Stream(
-                fixture.Create(contextFactory, dispose, sequence, pool, write),
-                new Random(Guid.NewGuid().GetHashCode())
-            );
-
-        private sealed class Stream : System.IO.Stream
+        public override void Flush()
         {
-            private readonly System.IO.Stream stream;
-            private readonly Random random;
+            stream.Flush();
+        }
 
-            public Stream(System.IO.Stream stream, Random random)
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            return stream.Seek(offset, origin);
+        }
+
+        public override void SetLength(long value)
+        {
+            stream.SetLength(value);
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            if (random.Next(0, 2) == 0)
             {
-                this.stream = stream;
-                this.random = random;
+                return InternalReadSync(buffer, offset, count);
             }
 
-            public override void Flush()
+            return InternalReadAsync(buffer, offset, count).Result;
+        }
+
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (random.Next(0, 2) == 0)
             {
-                stream.Flush();
+                return InternalReadSync(buffer, offset, count);
             }
 
-            public override long Seek(long offset, SeekOrigin origin)
-            {
-                return stream.Seek(offset, origin);
-            }
+            return await InternalReadAsync(buffer, offset, count);
+        }
 
-            public override void SetLength(long value)
-            {
-                stream.SetLength(value);
-            }
+        private int InternalReadSync(byte[] buffer, int offset, int count)
+        {
+            return stream.Read(buffer, offset, count);
+        }
 
-            public override int Read(byte[] buffer, int offset, int count)
-            {
-                if (random.Next(0, 2) == 0)
-                {
-                    return InternalReadSync(buffer, offset, count);
-                }
+        private Task<int> InternalReadAsync(byte[] buffer, int offset, int count)
+        {
+            return stream.ReadAsync(buffer, offset, count);
+        }
 
-                return InternalReadAsync(buffer, offset, count).Result;
-            }
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            stream.Write(buffer, offset, count);
+        }
 
-            public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            {
-                if (random.Next(0, 2) == 0)
-                {
-                    return InternalReadSync(buffer, offset, count);
-                }
+        public override bool CanRead => stream.CanRead;
 
-                return await InternalReadAsync(buffer, offset, count);
-            }
+        public override bool CanSeek => stream.CanSeek;
 
-            private int InternalReadSync(byte[] buffer, int offset, int count)
-            {
-                return stream.Read(buffer, offset, count);
-            }
+        public override bool CanWrite => stream.CanWrite;
 
-            private Task<int> InternalReadAsync(byte[] buffer, int offset, int count)
-            {
-                return stream.ReadAsync(buffer, offset, count);
-            }
+        public override long Length => stream.Length;
 
-            public override void Write(byte[] buffer, int offset, int count)
-            {
-                stream.Write(buffer, offset, count);
-            }
+        public override long Position
+        {
+            get => stream.Position;
+            set => stream.Position = value;
+        }
 
-            public override bool CanRead => stream.CanRead;
-
-            public override bool CanSeek => stream.CanSeek;
-
-            public override bool CanWrite => stream.CanWrite;
-
-            public override long Length => stream.Length;
-
-            public override long Position
-            {
-                get => stream.Position;
-                set => stream.Position = value;
-            }
-
-            protected override void Dispose(bool disposing)
-            {
-                stream.Dispose();
-            }
+        protected override void Dispose(bool disposing)
+        {
+            stream.Dispose();
         }
     }
 }

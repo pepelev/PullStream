@@ -1,8 +1,7 @@
-﻿namespace PullStream.Csv
+﻿namespace PullStream.Csv;
+
+public enum LastNewLine : sbyte
 {
-    public enum LastNewLine : sbyte
-    {
-        No,
-        Yes
-    }
+    No,
+    Yes
 }

@@ -1,43 +1,42 @@
 ﻿using System;
 
-namespace PullStream
-{
-    internal readonly struct ArrayFragmentValidation
-    {
-        private readonly (byte[] Value, string Name) array;
-        private readonly (int Value, string Name) offset;
-        private readonly (int Value, string Name) count;
+namespace PullStream;
 
-        public ArrayFragmentValidation(
-            (byte[] Value, string Name) array,
-            (int Value, string Name) offset,
-            (int Value, string Name) count)
+internal readonly struct ArrayFragmentValidation
+{
+    private readonly (byte[] Value, string Name) array;
+    private readonly (int Value, string Name) offset;
+    private readonly (int Value, string Name) count;
+
+    public ArrayFragmentValidation(
+        (byte[] Value, string Name) array,
+        (int Value, string Name) offset,
+        (int Value, string Name) count)
+    {
+        this.array = array;
+        this.offset = offset;
+        this.count = count;
+    }
+
+    public void Run()
+    {
+        if (array.Value == null)
         {
-            this.array = array;
-            this.offset = offset;
-            this.count = count;
+            throw new ArgumentNullException(array.Name);
         }
 
-        public void Run()
+        if (offset.Value < 0)
         {
-            if (array.Value == null)
-            {
-                throw new ArgumentNullException(array.Name);
-            }
+            throw new ArgumentOutOfRangeException(offset.Name, offset.Value, "Must be non-negative");
+        }
 
-            if (offset.Value < 0)
-            {
-                throw new ArgumentOutOfRangeException(offset.Name, offset.Value, "Must be non-negative");
-            }
-
-            if (offset.Value + count.Value > array.Value.Length)
-            {
-                throw new ArgumentOutOfRangeException(
-                    count.Name,
-                    count.Value,
-                    "offset + count must not exceed array length"
-                );
-            }
+        if (offset.Value + count.Value > array.Value.Length)
+        {
+            throw new ArgumentOutOfRangeException(
+                count.Name,
+                count.Value,
+                "offset + count must not exceed array length"
+            );
         }
     }
 }

@@ -1,22 +1,21 @@
-﻿namespace PullStream.Json
+﻿namespace PullStream.Json;
+
+using Newtonsoft.Json;
+
+public sealed class Dates : Configuration
 {
-    using Newtonsoft.Json;
+    private readonly string format;
+    private readonly DateTimeZoneHandling timeZoneHandling;
 
-    public sealed class Dates : Configuration
+    public Dates(string format, DateTimeZoneHandling timeZoneHandling = DateTimeZoneHandling.RoundtripKind)
     {
-        private readonly string format;
-        private readonly DateTimeZoneHandling timeZoneHandling;
+        this.format = format;
+        this.timeZoneHandling = timeZoneHandling;
+    }
 
-        public Dates(string format, DateTimeZoneHandling timeZoneHandling = DateTimeZoneHandling.RoundtripKind)
-        {
-            this.format = format;
-            this.timeZoneHandling = timeZoneHandling;
-        }
-
-        public override void Apply(JsonTextWriter target)
-        {
-            target.DateFormatString = format;
-            target.DateTimeZoneHandling = timeZoneHandling;
-        }
+    public override void Apply(JsonTextWriter target)
+    {
+        target.DateFormatString = format;
+        target.DateTimeZoneHandling = timeZoneHandling;
     }
 }

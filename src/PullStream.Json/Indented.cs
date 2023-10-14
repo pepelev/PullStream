@@ -1,23 +1,22 @@
-﻿namespace PullStream.Json
+﻿namespace PullStream.Json;
+
+using Newtonsoft.Json;
+
+public sealed class Indented : Configuration
 {
-    using Newtonsoft.Json;
+    private readonly char indentChar;
+    private readonly int indentationSize;
 
-    public sealed class Indented : Configuration
+    public Indented(int indentationSize = 2, char indentChar = ' ')
     {
-        private readonly char indentChar;
-        private readonly int indentationSize;
+        this.indentChar = indentChar;
+        this.indentationSize = indentationSize;
+    }
 
-        public Indented(int indentationSize = 2, char indentChar = ' ')
-        {
-            this.indentChar = indentChar;
-            this.indentationSize = indentationSize;
-        }
-
-        public override void Apply(JsonTextWriter target)
-        {
-            target.Formatting = Formatting.Indented;
-            target.IndentChar = indentChar;
-            target.Indentation = indentationSize;
-        }
+    public override void Apply(JsonTextWriter target)
+    {
+        target.Formatting = Formatting.Indented;
+        target.IndentChar = indentChar;
+        target.Indentation = indentationSize;
     }
 }

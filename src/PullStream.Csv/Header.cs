@@ -1,20 +1,19 @@
 ﻿using System;
 using CsvHelper;
 
-namespace PullStream.Csv
+namespace PullStream.Csv;
+
+public sealed class Header : OutputChunk<CsvWriter>
 {
-    public sealed class Header : OutputChunk<CsvWriter>
+    private readonly Type type;
+
+    public Header(Type type)
     {
-        private readonly Type type;
+        this.type = type ?? throw new ArgumentNullException(nameof(type));
+    }
 
-        public Header(Type type)
-        {
-            this.type = type ?? throw new ArgumentNullException(nameof(type));
-        }
-
-        public override void Write(CsvWriter target)
-        {
-            target.WriteHeader(type);
-        }
+    public override void Write(CsvWriter target)
+    {
+        target.WriteHeader(type);
     }
 }

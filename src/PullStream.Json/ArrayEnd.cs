@@ -1,12 +1,11 @@
-﻿namespace PullStream.Json
-{
-    using Newtonsoft.Json;
+﻿namespace PullStream.Json;
 
-    public sealed class ArrayEnd : OutputChunk<JsonWriter>
+using Newtonsoft.Json;
+
+public sealed class ArrayEnd : OutputChunk<JsonWriter>
+{
+    public override void Write(JsonWriter output)
     {
-        public override void Write(JsonWriter output)
-        {
-            output.WriteEndArray();
-        }
+        output.WriteEndArray();
     }
 }

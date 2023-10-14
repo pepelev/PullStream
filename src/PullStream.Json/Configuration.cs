@@ -1,36 +1,35 @@
-﻿namespace PullStream.Json
+﻿namespace PullStream.Json;
+
+using Newtonsoft.Json;
+
+public abstract class Configuration
 {
-    using Newtonsoft.Json;
+    public static Configuration Default => new DefaultConfiguration();
 
-    public abstract class Configuration
+    public abstract void Apply(JsonTextWriter target);
+
+    private sealed class DefaultConfiguration : Configuration
     {
-        public static Configuration Default => new DefaultConfiguration();
-
-        public abstract void Apply(JsonTextWriter target);
-
-        private sealed class DefaultConfiguration : Configuration
+        public override void Apply(JsonTextWriter target)
         {
-            public override void Apply(JsonTextWriter target)
-            {
-                // intentionally left blank
-            }
+            // intentionally left blank
+        }
+    }
+
+    public sealed class Composite : Configuration
+    {
+        private readonly Configuration[] parts;
+
+        public Composite(params Configuration[] parts)
+        {
+            this.parts = parts;
         }
 
-        public sealed class Composite : Configuration
+        public override void Apply(JsonTextWriter target)
         {
-            private readonly Configuration[] parts;
-
-            public Composite(params Configuration[] parts)
+            foreach (var part in parts)
             {
-                this.parts = parts;
-            }
-
-            public override void Apply(JsonTextWriter target)
-            {
-                foreach (var part in parts)
-                {
-                    part.Apply(target);
-                }
+                part.Apply(target);
             }
         }
     }

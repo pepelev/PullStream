@@ -8,113 +8,112 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PullStream
+namespace PullStream;
+
+public static class AsyncSequenceExtensions
 {
-    public static class AsyncSequenceExtensions
+    [Pure]
+    public static IAsyncEnumerable<Item<T>> AsItems<T>(this IAsyncEnumerable<T> sequence)
     {
-        [Pure]
-        public static IAsyncEnumerable<Item<T>> AsItems<T>(this IAsyncEnumerable<T> sequence)
+        if (sequence == null)
         {
-            if (sequence == null)
-            {
-                throw new ArgumentNullException(nameof(sequence));
-            }
-
-            return sequence.WithItemKind().Indexed().Select(
-                triple =>
-                {
-                    var (index, (kind, item)) = triple;
-                    return new Item<T>(index, kind, item);
-                }
-            );
+            throw new ArgumentNullException(nameof(sequence));
         }
 
-        [Pure]
-        public static IAsyncEnumerable<(ItemKind Kind, T Item)> WithItemKind<T>(this IAsyncEnumerable<T> sequence)
-        {
-            if (sequence == null)
+        return sequence.WithItemKind().Indexed().Select(
+            triple =>
             {
-                throw new ArgumentNullException(nameof(sequence));
+                var (index, (kind, item)) = triple;
+                return new Item<T>(index, kind, item);
             }
+        );
+    }
 
-            return sequence.WithItemKindYield();
+    [Pure]
+    public static IAsyncEnumerable<(ItemKind Kind, T Item)> WithItemKind<T>(this IAsyncEnumerable<T> sequence)
+    {
+        if (sequence == null)
+        {
+            throw new ArgumentNullException(nameof(sequence));
         }
 
-        [Pure]
-        private static async IAsyncEnumerable<(ItemKind Kind, T Item)> WithItemKindYield<T>(
-            this IAsyncEnumerable<T> sequence,
-            [EnumeratorCancellation] CancellationToken token = default)
+        return sequence.WithItemKindYield();
+    }
+
+    [Pure]
+    private static async IAsyncEnumerable<(ItemKind Kind, T Item)> WithItemKindYield<T>(
+        this IAsyncEnumerable<T> sequence,
+        [EnumeratorCancellation] CancellationToken token = default)
+    {
+        await using var enumerator = sequence.WithCancellation(token).GetAsyncEnumerator();
+        if (!await enumerator.MoveNextAsync())
         {
-            await using var enumerator = sequence.WithCancellation(token).GetAsyncEnumerator();
-            if (!await enumerator.MoveNextAsync())
-            {
-                yield break;
-            }
+            yield break;
+        }
 
-            var current = enumerator.Current;
-            if (!await enumerator.MoveNextAsync())
-            {
-                yield return (ItemKind.Single, current);
-                yield break;
-            }
+        var current = enumerator.Current;
+        if (!await enumerator.MoveNextAsync())
+        {
+            yield return (ItemKind.Single, current);
+            yield break;
+        }
 
-            yield return (ItemKind.First, current);
+        yield return (ItemKind.First, current);
+        current = enumerator.Current;
+
+        while (await enumerator.MoveNextAsync())
+        {
+            yield return (ItemKind.Middle, current);
             current = enumerator.Current;
-
-            while (await enumerator.MoveNextAsync())
-            {
-                yield return (ItemKind.Middle, current);
-                current = enumerator.Current;
-            }
-
-            yield return (ItemKind.Last, current);
         }
 
-        [Pure]
-        public static IAsyncEnumerable<(int Index, T Item)> Indexed<T>(this IAsyncEnumerable<T> sequence)
-        {
-            if (sequence == null)
-            {
-                throw new ArgumentNullException(nameof(sequence));
-            }
+        yield return (ItemKind.Last, current);
+    }
 
-            return sequence.Select((item, index) => (index, item));
+    [Pure]
+    public static IAsyncEnumerable<(int Index, T Item)> Indexed<T>(this IAsyncEnumerable<T> sequence)
+    {
+        if (sequence == null)
+        {
+            throw new ArgumentNullException(nameof(sequence));
         }
 
-        [Pure]
-        internal static async IAsyncEnumerable<Bytes> Chunks(
-            this IAsyncEnumerable<Stream> streams,
-            ArrayPool<byte> pool,
-            int size,
-            [EnumeratorCancellation] CancellationToken token = default)
+        return sequence.Select((item, index) => (index, item));
+    }
+
+    [Pure]
+    internal static async IAsyncEnumerable<Bytes> Chunks(
+        this IAsyncEnumerable<Stream> streams,
+        ArrayPool<byte> pool,
+        int size,
+        [EnumeratorCancellation] CancellationToken token = default)
+    {
+        var buffer = pool.Rent(size);
+        try
         {
-            var buffer = pool.Rent(size);
-            try
+            await foreach (var stream in streams.WithCancellation(token))
             {
-                await foreach (var stream in streams.WithCancellation(token))
-                {
 #if !NETSTANDARD2_0
                     await
 #endif
-                    using (stream)
+                using (stream)
+                {
+                    while (true)
                     {
-                        while (true)
+                        var read = await stream.ReadAsync(buffer, 0, size, token);
+                        if (read <= 0)
                         {
-                            var read = await stream.ReadAsync(buffer, 0, size, token);
-                            if (read <= 0)
-                            {
-                                break;
-                            }
-
-                            yield return new Bytes(buffer, 0, read);
+                            break;
                         }
+
+                        yield return new Bytes(buffer, 0, read);
                     }
                 }
             }
-            finally
-            {
-                pool.Return(buffer);
-            }
+        }
+        finally
+        {
+            pool.Return(buffer);
         }
     }
 }

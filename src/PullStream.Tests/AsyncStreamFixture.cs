@@ -4,20 +4,19 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace PullStream.Tests
+namespace PullStream.Tests;
+
+public sealed class AsyncStreamFixture : IStreamFixture
 {
-    public sealed class AsyncStreamFixture : IStreamFixture
-    {
-        public Stream Create<TItem, TContext>(
-            Func<Stream, TContext> contextFactory,
-            Action<TContext> dispose,
-            IEnumerable<TItem> sequence,
-            ArrayPool<byte> pool,
-            Action<TContext, TItem> write)
-            => SequenceStream
-                .Using(contextFactory, dispose)
-                .On(sequence.ToAsyncEnumerable())
-                .Pooling(pool)
-                .Writing(write);
-    }
+    public Stream Create<TItem, TContext>(
+        Func<Stream, TContext> contextFactory,
+        Action<TContext> dispose,
+        IEnumerable<TItem> sequence,
+        ArrayPool<byte> pool,
+        Action<TContext, TItem> write)
+        => SequenceStream
+            .Using(contextFactory, dispose)
+            .On(sequence.ToAsyncEnumerable())
+            .Pooling(pool)
+            .Writing(write);
 }

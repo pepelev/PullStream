@@ -5,198 +5,197 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PullStream
+namespace PullStream;
+
+public sealed class AsyncSequenceStream<T, TContext> : Stream
 {
-    public sealed class AsyncSequenceStream<T, TContext> : Stream
+    private readonly CircularBuffer content;
+    private readonly IAsyncEnumerator<T> enumerator;
+    private readonly Lazy<TContext> context;
+    private readonly Action<TContext> dispose;
+    private readonly Action<TContext, T> write;
+    private State state = State.MoveNext;
+
+    public AsyncSequenceStream(
+        Func<Stream, TContext> contextFactory,
+        Action<TContext> dispose,
+        Action<TContext, T> write,
+        ArrayPool<byte> pool,
+        IAsyncEnumerator<T> enumerator)
     {
-        private readonly CircularBuffer content;
-        private readonly IAsyncEnumerator<T> enumerator;
-        private readonly Lazy<TContext> context;
-        private readonly Action<TContext> dispose;
-        private readonly Action<TContext, T> write;
-        private State state = State.MoveNext;
-
-        public AsyncSequenceStream(
-            Func<Stream, TContext> contextFactory,
-            Action<TContext> dispose,
-            Action<TContext, T> write,
-            ArrayPool<byte> pool,
-            IAsyncEnumerator<T> enumerator)
+        if (contextFactory == null)
         {
-            if (contextFactory == null)
-            {
-                throw new ArgumentNullException(nameof(contextFactory));
-            }
-
-            if (pool == null)
-            {
-                throw new ArgumentNullException(nameof(pool));
-            }
-
-            this.dispose = dispose ?? throw new ArgumentNullException(nameof(dispose));
-            this.write = write ?? throw new ArgumentNullException(nameof(write));
-            this.enumerator = enumerator ?? throw new ArgumentNullException(nameof(enumerator));
-            content = new(pool);
-            context = new(
-                () => contextFactory(content.WriteStream),
-                LazyThreadSafetyMode.None
-            );
+            throw new ArgumentNullException(nameof(contextFactory));
         }
 
-        public override bool CanRead
+        if (pool == null)
         {
-            get
-            {
-                CheckDisposed();
-                return true;
-            }
+            throw new ArgumentNullException(nameof(pool));
         }
 
-        public override bool CanSeek
-        {
-            get
-            {
-                CheckDisposed();
-                return false;
-            }
-        }
+        this.dispose = dispose ?? throw new ArgumentNullException(nameof(dispose));
+        this.write = write ?? throw new ArgumentNullException(nameof(write));
+        this.enumerator = enumerator ?? throw new ArgumentNullException(nameof(enumerator));
+        content = new(pool);
+        context = new(
+            () => contextFactory(content.WriteStream),
+            LazyThreadSafetyMode.None
+        );
+    }
 
-        public override bool CanWrite
+    public override bool CanRead
+    {
+        get
         {
-            get
-            {
-                CheckDisposed();
-                return false;
-            }
+            CheckDisposed();
+            return true;
         }
+    }
 
-        public override long Length => throw new NotSupportedException();
-
-        public override long Position
+    public override bool CanSeek
+    {
+        get
         {
-            get
-            {
-                CheckDisposed();
-                return content.BytesCut;
-            }
-            set => throw new NotSupportedException();
+            CheckDisposed();
+            return false;
         }
+    }
 
-        protected override void Dispose(bool disposing)
+    public override bool CanWrite
+    {
+        get
         {
-            base.Dispose(disposing);
-            DisposeAsync().AsTask().Wait();
+            CheckDisposed();
+            return false;
         }
+    }
+
+    public override long Length => throw new NotSupportedException();
+
+    public override long Position
+    {
+        get
+        {
+            CheckDisposed();
+            return content.BytesCut;
+        }
+        set => throw new NotSupportedException();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        DisposeAsync().AsTask().Wait();
+    }
 
 #if NETSTANDARD2_0
-        private
+    private
 #else
         public override
 #endif
         async ValueTask DisposeAsync()
+    {
+        if (state == State.Completed || state == State.Disposed)
         {
-            if (state == State.Completed || state == State.Disposed)
-            {
-                return;
-            }
-
-            await CleanupAsync();
-            state = State.Disposed;
+            return;
         }
 
-        private async ValueTask CleanupAsync()
+        await CleanupAsync();
+        state = State.Disposed;
+    }
+
+    private async ValueTask CleanupAsync()
+    {
+        await enumerator.DisposeAsync();
+
+        if (context.IsValueCreated)
         {
-            await enumerator.DisposeAsync();
-
-            if (context.IsValueCreated)
-            {
-                dispose(context.Value);
-            }
-
-            content.Dispose();
+            dispose(context.Value);
         }
 
-        public override void Flush()
+        content.Dispose();
+    }
+
+    public override void Flush()
+    {
+        CheckDisposed();
+    }
+
+    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        if (buffer == null)
         {
-            CheckDisposed();
+            throw new ArgumentNullException(nameof(buffer));
         }
 
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        if (offset < 0)
         {
-            if (buffer == null)
-            {
-                throw new ArgumentNullException(nameof(buffer));
-            }
-
-            if (offset < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(offset), offset, "Must be non-negative");
-            }
-
-            if (offset + count > buffer.Length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count), count, "offset + count must not exceed buffer array length");
-            }
-
-            var memory = new Memory<byte>(buffer, offset, count);
-            return await ReadAsync(memory, cancellationToken);
+            throw new ArgumentOutOfRangeException(nameof(offset), offset, "Must be non-negative");
         }
+
+        if (offset + count > buffer.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(count), count, "offset + count must not exceed buffer array length");
+        }
+
+        var memory = new Memory<byte>(buffer, offset, count);
+        return await ReadAsync(memory, cancellationToken);
+    }
 
 #if NETSTANDARD2_0
-        private
+    private
 #else
         public override
 #endif
         async ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken cancellationToken = default)
+    {
+        CheckDisposed();
+        while (state != State.Completed && content.BytesReady < destination.Length)
         {
-            CheckDisposed();
-            while (state != State.Completed && content.BytesReady < destination.Length)
+            cancellationToken.ThrowIfCancellationRequested();
+            if (state == State.MoveNext)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (state == State.MoveNext)
-                {
-                    var moved = await enumerator.MoveNextAsync();
-                    state = moved
-                        ? State.Current
-                        : State.Cleanup;
-                }
-                else if (state == State.Current)
-                {
-                    write(context.Value, enumerator.Current);
-                    state = State.MoveNext;
-                }
-                else if (state == State.Cleanup)
-                {
-                    await CleanupAsync();
-                    state = State.Completed;
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Stream is in wrong state: {state}");
-                }
+                var moved = await enumerator.MoveNextAsync();
+                state = moved
+                    ? State.Current
+                    : State.Cleanup;
             }
-
-            var length = Math.Min(destination.Length, content.BytesReady);
-            content.Read(destination.Span.Slice(0, length));
-            content.Cut(length);
-            return length;
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            return ReadAsync(buffer, offset, count).Result;
-        }
-
-        private void CheckDisposed()
-        {
-            if (state == State.Disposed)
+            else if (state == State.Current)
             {
-                throw new ObjectDisposedException(nameof(SequenceStream));
+                write(context.Value, enumerator.Current);
+                state = State.MoveNext;
+            }
+            else if (state == State.Cleanup)
+            {
+                await CleanupAsync();
+                state = State.Completed;
+            }
+            else
+            {
+                throw new InvalidOperationException($"Stream is in wrong state: {state}");
             }
         }
 
-        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-        public override void SetLength(long value) => throw new NotSupportedException();
-        public override void Write(byte[] source, int offset, int count) => throw new NotSupportedException();
+        var length = Math.Min(destination.Length, content.BytesReady);
+        content.Read(destination.Span.Slice(0, length));
+        content.Cut(length);
+        return length;
     }
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        return ReadAsync(buffer, offset, count).Result;
+    }
+
+    private void CheckDisposed()
+    {
+        if (state == State.Disposed)
+        {
+            throw new ObjectDisposedException(nameof(SequenceStream));
+        }
+    }
+
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    public override void SetLength(long value) => throw new NotSupportedException();
+    public override void Write(byte[] source, int offset, int count) => throw new NotSupportedException();
 }

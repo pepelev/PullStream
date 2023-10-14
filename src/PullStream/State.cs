@@ -1,11 +1,10 @@
-﻿namespace PullStream
+﻿namespace PullStream;
+
+internal enum State
 {
-    internal enum State
-    {
-        MoveNext,
-        Current,
-        Cleanup,
-        Completed,
-        Disposed
-    }
+    MoveNext,
+    Current,
+    Cleanup,
+    Completed,
+    Disposed
 }
