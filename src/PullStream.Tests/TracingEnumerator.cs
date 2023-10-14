@@ -3,35 +3,34 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PullStream.Tests
+namespace PullStream.Tests;
+
+public sealed class TracingEnumerator<T> : IEnumerator<T>
 {
-    public sealed class TracingEnumerator<T> : IEnumerator<T>
+    private static readonly IEnumerator<T> @default = Array.Empty<T>().AsEnumerable().GetEnumerator();
+
+    public bool Disposed { get; private set; }
+    public IEnumerator<T> Inner { get; set; } = @default;
+
+    public bool MoveNext()
     {
-        private static readonly IEnumerator<T> @default = Array.Empty<T>().AsEnumerable().GetEnumerator();
+        return Inner.MoveNext();
+    }
 
-        public bool Disposed { get; private set; }
-        public IEnumerator<T> Inner { get; set; } = @default;
+    public void Reset() => Inner.Reset();
 
-        public bool MoveNext()
+    public T Current => Inner.Current;
+    object IEnumerator.Current => Current;
+
+    public void Dispose()
+    {
+        try
         {
-            return Inner.MoveNext();
+            Inner.Dispose();
         }
-
-        public void Reset() => Inner.Reset();
-
-        public T Current => Inner.Current;
-        object IEnumerator.Current => Current;
-
-        public void Dispose()
+        finally
         {
-            try
-            {
-                Inner.Dispose();
-            }
-            finally
-            {
-                Disposed = true;
-            }
+            Disposed = true;
         }
     }
 }

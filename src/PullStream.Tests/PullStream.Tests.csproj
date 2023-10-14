@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <OutputPath>..\..\bin\PullStream.Tests</OutputPath>
-    <TargetFrameworks>net472;net5.0</TargetFrameworks>
-    <LangVersion>9</LangVersion>
+    <TargetFrameworks>net472;net6.0</TargetFrameworks>
+    <LangVersion>11</LangVersion>
     <IsPackable>false</IsPackable>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
   </PropertyGroup>

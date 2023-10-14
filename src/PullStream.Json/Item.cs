@@ -1,21 +1,20 @@
-﻿namespace PullStream.Json
+﻿namespace PullStream.Json;
+
+using Newtonsoft.Json;
+
+public sealed class Item<T> : OutputChunk<JsonWriter>
 {
-    using Newtonsoft.Json;
+    private readonly JsonSerializer serializer;
+    private readonly T value;
 
-    public sealed class Item<T> : OutputChunk<JsonWriter>
+    public Item(T value, JsonSerializer serializer)
     {
-        private readonly JsonSerializer serializer;
-        private readonly T value;
+        this.value = value;
+        this.serializer = serializer;
+    }
 
-        public Item(T value, JsonSerializer serializer)
-        {
-            this.value = value;
-            this.serializer = serializer;
-        }
-
-        public override void Write(JsonWriter output)
-        {
-            serializer.Serialize(output, value);
-        }
+    public override void Write(JsonWriter output)
+    {
+        serializer.Serialize(output, value);
     }
 }

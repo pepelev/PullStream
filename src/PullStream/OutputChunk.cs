@@ -1,7 +1,6 @@
-﻿namespace PullStream
+﻿namespace PullStream;
+
+public abstract class OutputChunk<T>
 {
-    public abstract class OutputChunk<T>
-    {
-        public abstract void Write(T output);
-    }
+    public abstract void Write(T output);
 }
